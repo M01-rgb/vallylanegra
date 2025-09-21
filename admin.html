@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - ValylaNegra</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #f8f9fa;
+            color: #333;
+        }
+
+        .container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 250px;
+            background: linear-gradient(135deg, #ff4d94 0%, #ff2f87 100%);
+            color: white;
+            padding: 1.5rem 1rem;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 2rem;
+            font-size: 1.5rem;
+            font-weight: bold;
+            padding: 0.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .sidebar-btn {
+            display: block;
+            width: 100%;
+            padding: 0.8rem 1rem;
+            margin: 0.5rem 0;
+            border: none;
+            background: transparent;
+            color: white;
+            text-align: left;
+            border-radius: 0.3rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .sidebar-btn:hover, .sidebar-btn.active {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .sidebar-btn i {
+            margin-right: 0.5rem;
+            width: 1.5rem;
+            text-align: center;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            padding: 1.5rem;
+            overflow-y: auto;
+        }
+
+        .admin-section {
+            display: none;
+        }
+
+        .admin-section.active {
+            display: block;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 0.3rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background-color: #ff4d94;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: #ff2f87;
+        }
+
+        .btn-danger {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background-color: #c82333;
+        }
+
+        /* Login Form */
+        #adminLogin {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: linear-gradient(135deg, #ff4d94 0%, #ff2f87 100%);
+        }
+
+        .login-container {
+            background: white;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .login-container h2 {
+            text-align: center;
+            margin-bottom: 1.5rem;
+            color: #ff4d94;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 0.8rem;
+            border: 1px solid #ddd;
+            border-radius: 0.3rem;
+            font-size: 1rem;
+        }
+
+        /* Dashboard */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
+            text-align: center;
+        }
+
+        .stat-card h3 {
+            font-size: 2rem;
+            color: #ff4d94;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-card p {
+            color: #6b7280;
+        }
+
+        /* Product Form */
+        .form-container {
+            background: white;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
+            margin-bottom: 2rem;
+        }
+
+        .form-container h3 {
+            margin-bottom: 1.5rem;
+            color: #ff4d94;
+        }
+
+        /* Product Grid */
+        .product-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .product-card, .user-card, .order-item, .cart-item-admin {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Section -->
+    <div id="adminLogin">
+        <div class="login-container">
+            <h2>Connexion Administrateur</h2>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="adminPassword">Mot de passe administrateur</label>
+                    <input type="password" id="adminPassword" required placeholder="Entrez le mot de passe">
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Se connecter</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Admin Dashboard -->
+    <div id="adminDashboard" style="display: none;">
+        <div class="container">
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <div class="logo">ValylaNegra Admin</div>
+                <button class="sidebar-btn active" onclick="showSection('dashboard')">
+                    <i class="fas fa-tachometer-alt"></i> Tableau de bord
+                </button>
+                <button class="sidebar-btn" onclick="showSection('products')">
+                    <i class="fas fa-box"></i> Produits
+                </button>
+                <button class="sidebar-btn" onclick="showSection('users')">
+                    <i class="fas fa-users"></i> Utilisateurs
+                </button>
+                <button class="sidebar-btn" onclick="showSection('orders')">
+                    <i class="fas fa-shopping-cart"></i> Commandes
+                </button>
+                <button class="sidebar-btn" onclick="showSection('carts')">
+                    <i class="fas fa-shopping-bag"></i> Paniers
+                </button>
+                <button class="sidebar-btn" onclick="logout()" style="margin-top: 2rem;">
+                    <i class="fas fa-sign-out-alt"></i> Déconnexion
+                </button>
+            </div>
+
+            <!-- Main Content -->
+            <div class="main-content">
+                <!-- Dashboard Section -->
+                <div id="dashboardSection" class="admin-section active">
+                    <div class="header">
+                        <h1>Tableau de bord</h1>
+                        <span>Bienvenue, Administrateur</span>
+                    </div>
+
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <h3 id="totalProducts">0</h3>
+                            <p>Produits</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3 id="totalUsers">0</h3>
+                            <p>Utilisateurs</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3 id="activeUsers">0</h3>
+                            <p>Utilisateurs actifs</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3 id="activeCarts">0</h3>
+                            <p>Paniers actifs</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Products Section -->
+                <div id="productsSection" class="admin-section">
+                    <div class="header">
+                        <h1>Gestion des produits</h1>
+                    </div>
+
+                    <div class="form-container">
+                        <h3>Ajouter un nouveau produit</h3>
+                        <form id="productForm">
+                            <div class="form-group">
+                                <label for="productName">Nom du produit</label>
+                                <input type="text" id="productName" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="productCategory">Catégorie</label>
+                                <input type="text" id="productCategory" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="productPrice">Prix</label>
+                                <input type="number" id="productPrice" step="0.01" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="productOriginalPrice">Prix original</label>
+                                <input type="number" id="productOriginalPrice" step="0.01" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="productDescription">Description</label>
+                                <input type="text" id="productDescription">
+                            </div>
+                            <div class="form-group">
+                                <label for="productImage1">Image 1 URL</label>
+                                <input type="url" id="productImage1">
+                            </div>
+                            <div class="form-group">
+                                <label for="productImage2">Image 2 URL</label>
+                                <input type="url" id="productImage2">
+                            </div>
+                            <div class="form-group">
+                                <label for="productImage3">Image 3 URL</label>
+                                <input type="url" id="productImage3">
+                            </div>
+                            <div class="form-group">
+                                <label for="productImage4">Image 4 URL</label>
+                                <input type="url" id="productImage4">
+                            </div>
+                            <button type="submit" class="btn btn-primary">Ajouter le produit</button>
+                        </form>
+                    </div>
+
+                    <div id="productsList">
+                        <!-- Products will be displayed here -->
+                    </div>
+                </div>
+
+                <!-- Users Section -->
+                <div id="usersSection" class="admin-section">
+                    <div class="header">
+                        <h1>Gestion des utilisateurs</h1>
+                    </div>
+
+                    <div id="usersList">
+                        <!-- Users will be displayed here -->
+                    </div>
+                </div>
+
+                <!-- Orders Section -->
+                <div id="ordersSection" class="admin-section">
+                    <div class="header">
+                        <h1>Gestion des commandes</h1>
+                    </div>
+
+                    <div id="ordersList">
+                        <!-- Orders will be displayed here -->
+                    </div>
+                </div>
+
+                <!-- Carts Section -->
+                <div id="cartsSection" class="admin-section">
+                    <div class="header">
+                        <h1>Paniers actifs</h1>
+                    </div>
+
+                    <div id="cartsList">
+                        <!-- Carts will be displayed here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase App (always include this first) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <!-- Firebase Firestore (the database we're using) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+    <script>
+        // Configuration Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyAG0n1uwFULiy3x00OXHsFUQCetRGhjTjU",
+            authDomain: "valy-3c8d8.firebaseapp.com",
+            projectId: "valy-3c8d8",
+            storageBucket: "valy-3c8d8.firebasestorage.app",
+            messagingSenderId: "231448443924",
+            appId: "1:231448443924:web:366b608f77368cd720fb01"
+        };
+
+        // Initialiser Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // Configuration et variables globales
+        const ADMIN_PASSWORD = "valyla2024";
+        let products = [];
+        let users = [];
+        let orders = [];
+        let carts = [];
+        let isLoggedIn = false;
+
+        // Initialisation
+        document.addEventListener("DOMContentLoaded", function() {
+            console.log("Document chargé, configuration des écouteurs d'événements");
+            setupEventListeners();
+            checkAdminSession();
+        });
+
+        function setupEventListeners() {
+            const loginForm = document.getElementById("loginForm");
+            if (loginForm) {
+                loginForm.addEventListener("submit", function(e) {
+                    console.log("Formulaire de connexion soumis");
+                    e.preventDefault();
+                    login();
+                });
+            } else {
+                console.error("Formulaire de connexion non trouvé");
+            }
+            
+            const productForm = document.getElementById("productForm");
+            if (productForm) {
+                productForm.addEventListener("submit", function(e) {
+                    e.preventDefault();
+                    addProduct();
+                });
+            }
+        }
+
+        function checkAdminSession() {
+            const adminSession = localStorage.getItem("valylanegra-admin-session");
+            if (adminSession) {
+                const sessionData = JSON.parse(adminSession);
+                const now = new Date().getTime();
+                // Vérifier si la session est encore valide (24 heures)
+                if (now - sessionData.timestamp < 24 * 60 * 60 * 1000) {
+                    showDashboard();
+                    loadData();
+                    return;
+                } else {
+                    // Session expirée
+                    localStorage.removeItem("valylanegra-admin-session");
+                }
+            }
+            showLogin();
+        }
+
+        function login() {
+            console.log("Fonction de connexion appelée");
+            const passwordInput = document.getElementById("adminPassword");
+            if (!passwordInput) {
+                console.error("Champ de mot de passe non trouvé");
+                return;
+            }
+            
+            const password = passwordInput.value;
+            console.log("Mot de passe saisi:", password);
+            
+            if (password === ADMIN_PASSWORD) {
+                console.log("Mot de passe correct");
+                // Enregistrer la session
+                localStorage.setItem("valylanegra-admin-session", JSON.stringify({
+                    timestamp: new Date().getTime(),
+                    isAdmin: true,
+                }));
+                
+                showDashboard();
+                loadData();
+            } else {
+                console.log("Mot de passe incorrect");
+                alert("Mot de passe incorrect!");
+                passwordInput.value = "";
+                passwordInput.focus();
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem("valylanegra-admin-session");
+            showLogin();
+        }
+
+        function showLogin() {
+            const adminLogin = document.getElementById("adminLogin");
+            const adminDashboard = document.getElementById("adminDashboard");
+            
+            if (adminLogin) adminLogin.style.display = "flex";
+            if (adminDashboard) adminDashboard.style.display = "none";
+            
+            isLoggedIn = false;
+        }
+
+        function showDashboard() {
+            const adminLogin = document.getElementById("adminLogin");
+            const adminDashboard = document.getElementById("adminDashboard");
+            
+            if (adminLogin) adminLogin.style.display = "none";
+            if (adminDashboard) adminDashboard.style.display = "block";
+            
+            isLoggedIn = true;
+        }
+
+        function loadData() {
+            loadProducts();
+            loadUsers();
+            loadOrders();
+            loadCarts();
+        }
+
+        function loadProducts() {
+            const productsCol = db.collection("products");
+            const q = productsCol.orderBy("createdAt", "desc");
+            
+            q.onSnapshot((snapshot) => {
+                products = snapshot.docs.map(doc => ({
+                    ...doc.data(),
+                    id: doc.id
+                }));
+                
+                updateStats();
+                renderProducts();
+            });
+        }
+
+        function loadUsers() {
+            const usersCol = db.collection("users");
+            const q = usersCol.orderBy("registeredAt", "desc");
+            
+            q.onSnapshot((snapshot) => {
+                users = snapshot.docs.map(doc => ({
+                    ...doc.data(),
+                    id: doc.id
+                }));
+                
+                updateStats();
+                renderUsers();
+            });
+        }
+
+        function loadOrders() {
+            const ordersCol = db.collection("orders");
+            const q = ordersCol.orderBy("createdAt", "desc");
+            
+            q.onSnapshot((snapshot) => {
+                orders = snapshot.docs.map(doc => ({
+                    ...doc.data(),
+                    id: doc.id
+                }));
+                
+                updateStats();
+                renderOrders();
+            });
+        }
+
+        function loadCarts() {
+            const cartsCol = db.collection("carts");
+            const q = cartsCol.where("totalAmount", ">", 0);
+            
+            q.onSnapshot((snapshot) => {
+                carts = snapshot.docs.map(doc => ({
+                    ...doc.data(),
+                    id: doc.id
+                }));
+                
+                updateStats();
+                renderCarts();
+            });
+        }
+
+        function updateStats() {
+            const totalProductsElem = document.getElementById("totalProducts");
+            const totalUsersElem = document.getElementById("totalUsers");
+            const activeUsersElem = document.getElementById("activeUsers");
+            const activeCartsElem = document.getElementById("activeCarts");
+            
+            if (totalProductsElem) totalProductsElem.textContent = products.length;
+            if (totalUsersElem) totalUsersElem.textContent = users.length;
+            
+            // Utilisateurs actifs (ayant eu une activité dans les dernières 24h)
+            const activeUsers = users.filter(user => {
+                if (!user.lastActivity) return false;
+                const lastActivity = new Date(user.lastActivity.toDate ? user.lastActivity.toDate() : user.lastActivity);
+                const now = new Date();
+                return (now - lastActivity) < 24 * 60 * 60 * 1000;
+            });
+            
+            if (activeUsersElem) activeUsersElem.textContent = activeUsers.length;
+            if (activeCartsElem) activeCartsElem.textContent = carts.length;
+        }
+
+        async function addProduct() {
+            const name = document.getElementById("productName").value;
+            const category = document.getElementById("productCategory").value;
+            const price = parseFloat(document.getElementById("productPrice").value);
+            const originalPrice = parseFloat(document.getElementById("productOriginalPrice").value);
+            const description = document.getElementById("productDescription").value;
+            
+            // Récupérer les URLs des images
+            const images = [];
+            for (let i = 1; i <= 4; i++) {
+                const imageUrl = document.getElementById(`productImage${i}`).value;
+                if (imageUrl) images.push(imageUrl);
+            }
+            
+            if (!name || !category || isNaN(price) || isNaN(originalPrice)) {
+                alert("Veuillez remplir tous les champs obligatoires");
+                return;
+            }
+            
+            try {
+                const productData = {
+                    name,
+                    category,
+                    price,
+                    originalPrice,
+                    description,
+                    images,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                };
+                
+                await db.collection("products").add(productData);
+                alert("Produit ajouté avec succès!");
+                document.getElementById("productForm").reset();
+            } catch (error) {
+                console.error("Erreur lors de l'ajout du produit:", error);
+                alert("Erreur lors de l'ajout du produit");
+            }
+        }
+
+        function renderProducts() {
+            const productsList = document.getElementById("productsList");
+            if (!productsList) return;
+            
+            if (products.length === 0) {
+                productsList.innerHTML = "<p>Aucun produit trouvé</p>";
+                return;
+            }
+            
+            productsList.innerHTML = `
+                <h3>Liste des produits (${products.length})</h3>
+                <div class="product-grid">
+                    ${products.map(product => `
+                        <div class="product-card">
+                            ${product.images && product.images.length > 0 ? 
+                                `<img src="${product.images[0]}" alt="${product.name}" style="width:100%;height:200px;object-fit:cover;border-radius:0.5rem;">` : 
+                                '<div style="width:100%;height:200px;background:#ffe6f2;display:flex;align-items:center;justify-content:center;border-radius:0.5rem;"><i class="fas fa-image" style="font-size:3rem;color:#ff4d94;"></i></div>'
+                            }
+                            <h3>${product.name}</h3>
+                            <p>Catégorie: ${product.category}</p>
+                            <p>Prix: $${product.price.toFixed(2)}</p>
+                            <p>Prix original: $${product.originalPrice.toFixed(2)}</p>
+                            <button class="btn btn-danger" onclick="deleteProduct('${product.id}')">
+                                <i class="fas fa-trash"></i> Supprimer
+                            </button>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        function renderUsers() {
+            const usersList = document.getElementById("usersList");
+            if (!usersList) return;
+            
+            if (users.length === 0) {
+                usersList.innerHTML = "<p>Aucun utilisateur trouvé</p>";
+                return;
+            }
+            
+            usersList.innerHTML = `
+                <h3>Liste des utilisateurs (${users.length})</h3>
+                ${users.map(user => `
+                    <div class="user-card">
+                        <h3>${user.name}</h3>
+                        <p>Email: ${user.email}</p>
+                        <p>Téléphone: ${user.phone}</p>
+                        <p>Inscrit le: ${new Date(user.registeredAt.toDate ? user.registeredAt.toDate() : user.registeredAt).toLocaleDateString()}</p>
+                        <span class="badge" style="background: ${user.isActive ? '#ff4d94' : '#6b7280'}; color: white; padding: 0.25rem 0.5rem; border-radius: 0.25rem;">
+                            ${user.isActive ? 'Active' : 'Inactive'}
+                        </span>
+                    </div>
+                `).join('')}
+            `;
+        }
+
+        function renderOrders() {
+            const ordersList = document.getElementById("ordersList");
+            if (!ordersList) return;
+            
+            if (orders.length === 0) {
+                ordersList.innerHTML = "<p>Aucune commande trouvée</p>";
+                return;
+            }
+            
+            ordersList.innerHTML = `
+                <h3>Liste des commandes (${orders.length})</h3>
+                ${orders.map(order => `
+                    <div class="order-item">
+                        <h3>Commande #${order.id.substring(0, 8)}</h3>
+                        <p>Client: ${order.customerName}</p>
+                        <p>Total: $${order.totalAmount.toFixed(2)}</p>
+                        <p>Statut: ${order.status}</p>
+                        <p>Date: ${new Date(order.createdAt.toDate ? order.createdAt.toDate() : order.createdAt).toLocaleDateString()}</p>
+                        <button class="btn btn-primary" onclick="viewOrderDetails('${order.id}')">
+                            <i class="fas fa-eye"></i> Voir les détails
+                        </button>
+                    </div>
+                `).join('')}
+            `;
+        }
+
+        function renderCarts() {
+            const cartsList = document.getElementById("cartsList");
+            if (!cartsList) return;
+            
+            if (carts.length === 0) {
+                cartsList.innerHTML = "<p>Aucun panier actif</p>";
+                return;
+            }
+            
+            cartsList.innerHTML = `
+                <h3>Paniers actifs (${carts.length})</h3>
+                ${carts.map(cart => `
+                    <div class="cart-item-admin">
+                        <h3>Panier #${cart.id.substring(0, 8)}</h3>
+                        <p>Total: $${cart.totalAmount.toFixed(2)}</p>
+                        <p>Nombre d'articles: ${cart.items.length}</p>
+                        <p>Dernière mise à jour: ${new Date(cart.lastUpdated.toDate ? cart.lastUpdated.toDate() : cart.lastUpdated).toLocaleString()}</p>
+                    </div>
+                `).join('')}
+            `;
+        }
+
+        window.showSection = function(sectionName) {
+            // Masquer toutes les sections
+            const sections = document.querySelectorAll(".admin-section");
+            sections.forEach(function(section) {
+                section.classList.remove("active");
+            });
+            
+            // Désactiver tous les boutons
+            const buttons = document.querySelectorAll(".sidebar-btn");
+            buttons.forEach(function(btn) {
+                btn.classList.remove("active");
+            });
+            
+            // Activer la section demandée
+            const targetSection = document.getElementById(sectionName + "Section");
+            if (targetSection) targetSection.classList.add("active");
+            
+            // Activer le bouton cliqué
+            event.target.classList.add("active");
+            
+            // Recharger les données si nécessaire
+            if (sectionName === "dashboard") updateStats();
+            if (sectionName === "products") renderProducts();
+            if (sectionName === "users") renderUsers();
+            if (sectionName === "orders") renderOrders();
+            if (sectionName === "carts") renderCarts();
+        }
+
+        // Fonctions pour la gestion des produits
+        window.deleteProduct = async function(id) {
+            if (confirm("Êtes-vous sûr de vouloir supprimer ce produit?")) {
+                try {
+                    await db.collection("products").doc(id).delete();
+                    alert("Produit supprimé avec succès");
+                } catch (error) {
+                    console.error("Erreur lors de la suppression:", error);
+                    alert("Erreur lors de la suppression du produit");
+                }
+            }
+        }
+
+        window.viewOrderDetails = function(orderId) {
+            const order = orders.find(o => o.id === orderId);
+            if (!order) return;
+            
+            alert(`Détails de la commande #${orderId.substring(0, 8)}\n
+Client: ${order.customerName}
+Email: ${order.customerEmail}
+Téléphone: ${order.customerPhone}
+Total: $${order.totalAmount.toFixed(2)}
+Statut: ${order.status}
+Adresse: ${order.shippingAddress}
+\nArticles:\n${order.items.map(item => `- ${item.quantity}x ${item.name} (${item.size}, ${item.color}): $${item.price.toFixed(2)}`).join('\n')}`);
+        }
+    </script>
+</body>
+</html>

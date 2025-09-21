@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Valy la Negra - Votre Boutique en Ligne</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- Firebase SDK -->
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+      import { getFirestore } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+      import { getStorage } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-storage.js";
+      
+      window.firebaseConfig = {
+        apiKey: "AIzaSyAG0n1uwFULiy3x00OXHsFUQCetRGhjTjU",
+        authDomain: "valy-3c8d8.firebaseapp.com",
+        projectId: "valy-3c8d8",
+        storageBucket: "valy-3c8d8.firebasestorage.app",
+        messagingSenderId: "231448443924",
+        appId: "1:231448443924:web:366b608f77368cd720fb01"
+      };
+      
+      window.firebaseApp = initializeApp(window.firebaseConfig);
+      window.firebaseDB = getFirestore(window.firebaseApp);
+      window.firebaseStorage = getStorage(window.firebaseApp);
+    </script>
+</head>
+<body>
+    <!-- Modal d'inscription -->
+    <div id="registrationModal" class="modal">
+        <div class="modal-content">
+            <h2>Bienvenue sur Valy la Negra! 🛍️</h2>
+            <p>Pour accéder à notre boutique, veuillez entrer vos informations</p>
+            <form id="registrationForm">
+                <div class="input-group">
+                    <i class="fas fa-user"></i>
+                    <input type="text" id="userName" placeholder="Votre nom complet" required>
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-envelope"></i>
+                    <input type="email" id="userEmail" placeholder="votre@email.com" required>
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-phone"></i>
+                    <input type="tel" id="userPhone" placeholder="Numéro de téléphone" pattern="[0-9 +]+" required>
+                </div>
+                <button type="submit">Accéder à Valy la Negra</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo user-logo" style="cursor:pointer;">
+                    <h1 id="userNameDisplay">Valy la Negra</h1>
+                </div>
+                <div class="search-bar">
+                    <i class="fas fa-search" id="searchIcon"></i>
+                    <input type="text" id="searchInput" placeholder="Rechercher des produits...">
+                    <i class="fas fa-times clear-search" id="clearSearch" style="display: none; cursor: pointer;"></i>
+                </div>
+                <div class="header-actions">
+                    <button class="share-btn" id="shareBtn">
+                        <i class="fas fa-share-alt"></i>
+                    </button>
+                    <button class="user-btn" id="profileBtn">
+                        <i class="fas fa-user"></i>
+                    </button>
+                    <button class="cart-btn" onclick="toggleCart()">
+                        <i class="fas fa-shopping-cart"></i>
+                        <span id="cartCount" class="cart-count">0</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Section Promo -->
+    <section class="promo-section">
+        <div class="container">
+            <div class="promo-banner">
+                <h2>🔥 Offres Spéciales Valy la Negra</h2>
+                <p>Jusqu'à 70% de réduction sur une sélection de produits</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Navigation Catégories -->
+    <nav class="category-nav">
+        <div class="container">
+            <div class="categories">
+                <button class="category-btn active" data-category="all">Tous</button>
+                <button class="category-btn" data-category="clothing">Vêtements</button>
+                <button class="category-btn" data-category="shoes">Chaussures</button>
+                <button class="category-btn" data-category="electronics">Électronique</button>
+                <button class="category-btn" data-category="home">Maison</button>
+                <button class="category-btn" data-category="sports">Sports</button>
+                <button class="category-btn" data-category="beauty">Beauté</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Grille de Produits -->
+    <main class="main-content">
+        <div class="container">
+            <div id="productsGrid" class="products-grid">
+                <div class="no-products">
+                    <h3>Aucun produit disponible</h3>
+                    <p>Les produits seront affichés ici une fois ajoutés par l'administrateur.</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Panier Sidebar -->
+    <div id="cartSidebar" class="cart-sidebar">
+        <div class="cart-header">
+            <h3>Mon Panier</h3>
+            <button onclick="toggleCart()" class="close-btn">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div id="cartItems" class="cart-items"></div>
+        <div style="margin:1.5rem 0;">
+            <div id="paypal-button-container"></div>
+        </div>
+        <div class="cart-footer">
+            <div class="cart-total">
+                <strong>Total: $<span id="cartTotal">0.00</span></strong>
+            </div>
+        </div>
+    </div>
+
+    <!-- Overlay -->
+    <div id="overlay" class="overlay"></div>
+    
+    <!-- Lightbox pour les images de produits -->
+    <div id="productLightbox" class="lightbox">
+        <span class="close">&times;</span>
+        <span class="arrow prev">&#10094;</span>
+        <span class="arrow next">&#10095;</span>
+        <img class="lightbox-content" id="lightboxImage">
+        <div id="lightboxDescription" class="lightbox-description"></div>
+    </div>
+
+    <!-- PayPal SDK -->
+    <script src="https://www.paypal.com/sdk/js?client-id=AX4iV51P3BZMi2XMsaCvCWpHRKzVLsXSBTpCiJg16aZ62_ToUcO3Y-KLtA3v_0rM_LHfM2W7dmGbsOZF&currency=USD"></script>
+    <script type="module" src="script.js"></script>
+</body>
+</html>
