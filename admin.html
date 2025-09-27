@@ -624,7 +624,27 @@
         </div>
     </div>
 
-    <!-- Le JavaScript sera chargé séparément -->
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+    <!-- Configuration Firebase -->
+    <script>
+        // Configuration Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyAG0n1uwFULiy3x00OXHsFUQCetRGhjTjU",
+            authDomain: "valy-3c8d8.firebaseapp.com",
+            projectId: "valy-3c8d8",
+            storageBucket: "valy-3c8d8.firebasestorage.app",
+            messagingSenderId: "231448443924",
+            appId: "1:231448443924:web:366b608f77368cd720fb01"
+        };
+
+        // Initialiser Firebase
+        firebase.initializeApp(firebaseConfig);
+    </script>
+
+    <!-- Script admin -->
     <script src="admin.js"></script>
 </body>
 </html>
