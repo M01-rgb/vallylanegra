@@ -9,6 +9,17 @@ let isLoggedIn = false;
 // Initialisation
 document.addEventListener("DOMContentLoaded", function() {
     console.log("Document chargé, configuration des écouteurs d'événements");
+    
+    // Vérifier que Firebase est initialisé
+    if (typeof firebase === 'undefined') {
+        console.error("Firebase n'est pas chargé");
+        return;
+    }
+    
+    // Initialiser Firestore
+    const db = firebase.firestore();
+    window.db = db; // Rendre db global
+    
     setupEventListeners();
     checkAdminSession();
 });
@@ -37,15 +48,20 @@ function setupEventListeners() {
 function checkAdminSession() {
     const adminSession = localStorage.getItem("valylanegra-admin-session");
     if (adminSession) {
-        const sessionData = JSON.parse(adminSession);
-        const now = new Date().getTime();
-        // Vérifier si la session est encore valide (24 heures)
-        if (now - sessionData.timestamp < 24 * 60 * 60 * 1000) {
-            showDashboard();
-            loadData();
-            return;
-        } else {
-            // Session expirée
+        try {
+            const sessionData = JSON.parse(adminSession);
+            const now = new Date().getTime();
+            // Vérifier si la session est encore valide (24 heures)
+            if (now - sessionData.timestamp < 24 * 60 * 60 * 1000) {
+                showDashboard();
+                loadData();
+                return;
+            } else {
+                // Session expirée
+                localStorage.removeItem("valylanegra-admin-session");
+            }
+        } catch (e) {
+            console.error("Erreur parsing session:", e);
             localStorage.removeItem("valylanegra-admin-session");
         }
     }
@@ -114,10 +130,15 @@ function loadData() {
 }
 
 function loadProducts() {
-    const productsCol = collection(db, "products");
-    const q = query(productsCol, orderBy("createdAt", "desc"));
+    if (!window.db) {
+        console.error("Firestore non initialisé");
+        return;
+    }
     
-    onSnapshot(q, (snapshot) => {
+    const productsCol = window.db.collection("products");
+    const q = productsCol.orderBy("createdAt", "desc");
+    
+    q.onSnapshot((snapshot) => {
         products = snapshot.docs.map(doc => ({
             ...doc.data(),
             id: doc.id
@@ -125,14 +146,21 @@ function loadProducts() {
         
         updateStats();
         renderProducts();
+    }, (error) => {
+        console.error("Erreur chargement produits:", error);
     });
 }
 
 function loadUsers() {
-    const usersCol = collection(db, "users");
-    const q = query(usersCol, orderBy("registeredAt", "desc"));
+    if (!window.db) {
+        console.error("Firestore non initialisé");
+        return;
+    }
     
-    onSnapshot(q, (snapshot) => {
+    const usersCol = window.db.collection("users");
+    const q = usersCol.orderBy("registeredAt", "desc");
+    
+    q.onSnapshot((snapshot) => {
         users = snapshot.docs.map(doc => ({
             ...doc.data(),
             id: doc.id
@@ -140,14 +168,21 @@ function loadUsers() {
         
         updateStats();
         renderUsers();
+    }, (error) => {
+        console.error("Erreur chargement utilisateurs:", error);
     });
 }
 
 function loadOrders() {
-    const ordersCol = collection(db, "orders");
-    const q = query(ordersCol, orderBy("createdAt", "desc"));
+    if (!window.db) {
+        console.error("Firestore non initialisé");
+        return;
+    }
     
-    onSnapshot(q, (snapshot) => {
+    const ordersCol = window.db.collection("orders");
+    const q = ordersCol.orderBy("createdAt", "desc");
+    
+    q.onSnapshot((snapshot) => {
         orders = snapshot.docs.map(doc => ({
             ...doc.data(),
             id: doc.id
@@ -155,14 +190,21 @@ function loadOrders() {
         
         updateStats();
         renderOrders();
+    }, (error) => {
+        console.error("Erreur chargement commandes:", error);
     });
 }
 
 function loadCarts() {
-    const cartsCol = collection(db, "carts");
-    const q = query(cartsCol, where("totalAmount", ">", 0));
+    if (!window.db) {
+        console.error("Firestore non initialisé");
+        return;
+    }
     
-    onSnapshot(q, (snapshot) => {
+    const cartsCol = window.db.collection("carts");
+    const q = cartsCol.where("totalAmount", ">", 0);
+    
+    q.onSnapshot((snapshot) => {
         carts = snapshot.docs.map(doc => ({
             ...doc.data(),
             id: doc.id
@@ -170,6 +212,8 @@ function loadCarts() {
         
         updateStats();
         renderCarts();
+    }, (error) => {
+        console.error("Erreur chargement paniers:", error);
     });
 }
 
@@ -185,9 +229,13 @@ function updateStats() {
     // Utilisateurs actifs (ayant eu une activité dans les dernières 24h)
     const activeUsers = users.filter(user => {
         if (!user.lastActivity) return false;
-        const lastActivity = new Date(user.lastActivity.toDate ? user.lastActivity.toDate() : user.lastActivity);
-        const now = new Date();
-        return (now - lastActivity) < 24 * 60 * 60 * 1000;
+        try {
+            const lastActivity = user.lastActivity.toDate ? user.lastActivity.toDate() : new Date(user.lastActivity);
+            const now = new Date();
+            return (now - lastActivity) < 24 * 60 * 60 * 1000;
+        } catch (e) {
+            return false;
+        }
     });
     
     if (activeUsersElem) activeUsersElem.textContent = activeUsers.length;
@@ -195,6 +243,11 @@ function updateStats() {
 }
 
 async function addProduct() {
+    if (!window.db) {
+        alert("Firestore non initialisé");
+        return;
+    }
+    
     const name = document.getElementById("productName").value;
     const category = document.getElementById("productCategory").value;
     const price = parseFloat(document.getElementById("productPrice").value);
@@ -219,17 +272,17 @@ async function addProduct() {
             category,
             price,
             originalPrice,
-            description,
+            description: description || "",
             images,
-            createdAt: serverTimestamp()
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
         };
         
-        await addDoc(collection(db, "products"), productData);
+        await window.db.collection("products").add(productData);
         alert("Produit ajouté avec succès!");
         document.getElementById("productForm").reset();
     } catch (error) {
         console.error("Erreur lors de l'ajout du produit:", error);
-        alert("Erreur lors de l'ajout du produit");
+        alert("Erreur lors de l'ajout du produit: " + error.message);
     }
 }
 
@@ -277,10 +330,10 @@ function renderUsers() {
         <h3>Liste des utilisateurs (${users.length})</h3>
         ${users.map(user => `
             <div class="user-card">
-                <h3>${user.name}</h3>
-                <p>Email: ${user.email}</p>
-                <p>Téléphone: ${user.phone}</p>
-                <p>Inscrit le: ${new Date(user.registeredAt.toDate ? user.registeredAt.toDate() : user.registeredAt).toLocaleDateString()}</p>
+                <h3>${user.name || 'Non renseigné'}</h3>
+                <p>Email: ${user.email || 'Non renseigné'}</p>
+                <p>Téléphone: ${user.phone || 'Non renseigné'}</p>
+                <p>Inscrit le: ${formatDate(user.registeredAt)}</p>
                 <span class="badge" style="background: ${user.isActive ? '#ff4d94' : '#6b7280'}; color: white; padding: 0.25rem 0.5rem; border-radius: 0.25rem;">
                     ${user.isActive ? 'Active' : 'Inactive'}
                 </span>
@@ -303,10 +356,10 @@ function renderOrders() {
         ${orders.map(order => `
             <div class="order-item">
                 <h3>Commande #${order.id.substring(0, 8)}</h3>
-                <p>Client: ${order.customerName}</p>
-                <p>Total: $${order.totalAmount.toFixed(2)}</p>
-                <p>Statut: ${order.status}</p>
-                <p>Date: ${new Date(order.createdAt.toDate ? order.createdAt.toDate() : order.createdAt).toLocaleDateString()}</p>
+                <p>Client: ${order.customerName || 'Non renseigné'}</p>
+                <p>Total: $${order.totalAmount ? order.totalAmount.toFixed(2) : '0.00'}</p>
+                <p>Statut: ${order.status || 'En attente'}</p>
+                <p>Date: ${formatDate(order.createdAt)}</p>
                 <button class="btn btn-primary" onclick="viewOrderDetails('${order.id}')">
                     <i class="fas fa-eye"></i> Voir les détails
                 </button>
@@ -329,12 +382,23 @@ function renderCarts() {
         ${carts.map(cart => `
             <div class="cart-item-admin">
                 <h3>Panier #${cart.id.substring(0, 8)}</h3>
-                <p>Total: $${cart.totalAmount.toFixed(2)}</p>
-                <p>Nombre d'articles: ${cart.items.length}</p>
-                <p>Dernière mise à jour: ${new Date(cart.lastUpdated.toDate ? cart.lastUpdated.toDate() : cart.lastUpdated).toLocaleString()}</p>
+                <p>Total: $${cart.totalAmount ? cart.totalAmount.toFixed(2) : '0.00'}</p>
+                <p>Nombre d'articles: ${cart.items ? cart.items.length : 0}</p>
+                <p>Dernière mise à jour: ${formatDate(cart.lastUpdated)}</p>
             </div>
         `).join('')}
     `;
+}
+
+function formatDate(dateValue) {
+    if (!dateValue) return 'Date inconnue';
+    
+    try {
+        const date = dateValue.toDate ? dateValue.toDate() : new Date(dateValue);
+        return date.toLocaleDateString('fr-FR');
+    } catch (e) {
+        return 'Date invalide';
+    }
 }
 
 window.showSection = function(sectionName) {
@@ -367,13 +431,18 @@ window.showSection = function(sectionName) {
 
 // Fonctions pour la gestion des produits
 window.deleteProduct = async function(id) {
+    if (!window.db) {
+        alert("Firestore non initialisé");
+        return;
+    }
+    
     if (confirm("Êtes-vous sûr de vouloir supprimer ce produit?")) {
         try {
-            await deleteDoc(doc(db, "products", id));
+            await window.db.collection("products").doc(id).delete();
             alert("Produit supprimé avec succès");
         } catch (error) {
             console.error("Erreur lors de la suppression:", error);
-            alert("Erreur lors de la suppression du produit");
+            alert("Erreur lors de la suppression du produit: " + error.message);
         }
     }
 }
@@ -383,11 +452,11 @@ window.viewOrderDetails = function(orderId) {
     if (!order) return;
     
     alert(`Détails de la commande #${orderId.substring(0, 8)}\n
-Client: ${order.customerName}
-Email: ${order.customerEmail}
-Téléphone: ${order.customerPhone}
-Total: $${order.totalAmount.toFixed(2)}
-Statut: ${order.status}
-Adresse: ${order.shippingAddress}
-\nArticles:\n${order.items.map(item => `- ${item.quantity}x ${item.name} (${item.size}, ${item.color}): $${item.price.toFixed(2)}`).join('\n')}`);
+Client: ${order.customerName || 'Non renseigné'}
+Email: ${order.customerEmail || 'Non renseigné'}
+Téléphone: ${order.customerPhone || 'Non renseigné'}
+Total: $${order.totalAmount ? order.totalAmount.toFixed(2) : '0.00'}
+Statut: ${order.status || 'En attente'}
+Adresse: ${order.shippingAddress || 'Non renseignée'}
+\nArticles:\n${order.items ? order.items.map(item => `- ${item.quantity}x ${item.name} (${item.size}, ${item.color}): $${item.price ? item.price.toFixed(2) : '0.00'}`).join('\n') : 'Aucun article'}`);
 }
