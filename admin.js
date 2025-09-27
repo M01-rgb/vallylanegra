@@ -6,6 +6,35 @@ let orders = [];
 let carts = [];
 let isLoggedIn = false;
 
+// Catégories disponibles pour les produits
+const PRODUCT_CATEGORIES = [
+    'all', 'clothing', 'shoes', 'electronics', 'home', 'sports', 'beauty',
+    'bags', 'jewelry', 'accessories', 'beauty', 'home-decor', 'kitchen',
+    'toys', 'books', 'health', 'fitness', 'automotive', 'garden'
+];
+
+// Noms affichés pour les catégories
+const CATEGORY_LABELS = {
+    'all': 'Toutes les catégories',
+    'clothing': '👕 Vêtements',
+    'shoes': '👟 Chaussures',
+    'electronics': '📱 Électronique',
+    'home': '🏠 Maison',
+    'sports': '⚽ Sports',
+    'beauty': '💄 Beauté',
+    'bags': '👜 Sacs',
+    'jewelry': '💎 Bijoux',
+    'accessories': '👓 Accessoires',
+    'home-decor': '🖼️ Décoration Maison',
+    'kitchen': '🍳 Cuisine',
+    'toys': '🧸 Jouets',
+    'books': '📚 Livres',
+    'health': '💊 Santé',
+    'fitness': '💪 Fitness',
+    'automotive': '🚗 Auto',
+    'garden': '🌿 Jardin'
+};
+
 // Initialisation
 document.addEventListener("DOMContentLoaded", function() {
     console.log("Document chargé, configuration des écouteurs d'événements");
@@ -13,6 +42,7 @@ document.addEventListener("DOMContentLoaded", function() {
     // Vérifier que Firebase est initialisé
     if (typeof firebase === 'undefined') {
         console.error("Firebase n'est pas chargé");
+        showMessage("Firebase n'est pas chargé. Vérifiez la configuration.", "error");
         return;
     }
     
@@ -21,6 +51,7 @@ document.addEventListener("DOMContentLoaded", function() {
     window.db = db; // Rendre db global
     
     setupEventListeners();
+    setupCategorySelect();
     checkAdminSession();
 });
 
@@ -45,6 +76,32 @@ function setupEventListeners() {
     }
 }
 
+function setupCategorySelect() {
+    const categorySelect = document.getElementById("productCategory");
+    if (!categorySelect) return;
+    
+    // Vider le select
+    categorySelect.innerHTML = '';
+    
+    // Ajouter l'option par défaut
+    const defaultOption = document.createElement('option');
+    defaultOption.value = '';
+    defaultOption.textContent = '📂 Sélectionner une catégorie';
+    defaultOption.disabled = true;
+    defaultOption.selected = true;
+    categorySelect.appendChild(defaultOption);
+    
+    // Ajouter toutes les catégories
+    PRODUCT_CATEGORIES.filter(cat => cat !== 'all').forEach(category => {
+        const option = document.createElement('option');
+        option.value = category;
+        option.textContent = CATEGORY_LABELS[category] || category;
+        categorySelect.appendChild(option);
+    });
+    
+    console.log("✅ Sélecteur de catégories initialisé");
+}
+
 function checkAdminSession() {
     const adminSession = localStorage.getItem("valylanegra-admin-session");
     if (adminSession) {
@@ -59,6 +116,7 @@ function checkAdminSession() {
             } else {
                 // Session expirée
                 localStorage.removeItem("valylanegra-admin-session");
+                showMessage("Session expirée, veuillez vous reconnecter", "info");
             }
         } catch (e) {
             console.error("Erreur parsing session:", e);
@@ -89,9 +147,10 @@ function login() {
         
         showDashboard();
         loadData();
+        showMessage("Connexion réussie! ✅", "success");
     } else {
         console.log("Mot de passe incorrect");
-        alert("Mot de passe incorrect!");
+        showMessage("Mot de passe incorrect! ❌", "error");
         passwordInput.value = "";
         passwordInput.focus();
     }
@@ -100,6 +159,7 @@ function login() {
 function logout() {
     localStorage.removeItem("valylanegra-admin-session");
     showLogin();
+    showMessage("Déconnexion réussie", "info");
 }
 
 function showLogin() {
@@ -132,8 +192,11 @@ function loadData() {
 function loadProducts() {
     if (!window.db) {
         console.error("Firestore non initialisé");
+        showMessage("Erreur de connexion à la base de données", "error");
         return;
     }
+    
+    console.log("📦 Chargement des produits...");
     
     const productsCol = window.db.collection("products");
     const q = productsCol.orderBy("createdAt", "desc");
@@ -144,10 +207,12 @@ function loadProducts() {
             id: doc.id
         }));
         
+        console.log(`✅ ${products.length} produits chargés`);
         updateStats();
         renderProducts();
     }, (error) => {
         console.error("Erreur chargement produits:", error);
+        showMessage("Erreur lors du chargement des produits", "error");
     });
 }
 
@@ -166,6 +231,7 @@ function loadUsers() {
             id: doc.id
         }));
         
+        console.log(`👥 ${users.length} utilisateurs chargés`);
         updateStats();
         renderUsers();
     }, (error) => {
@@ -188,6 +254,7 @@ function loadOrders() {
             id: doc.id
         }));
         
+        console.log(`📦 ${orders.length} commandes chargées`);
         updateStats();
         renderOrders();
     }, (error) => {
@@ -210,6 +277,7 @@ function loadCarts() {
             id: doc.id
         }));
         
+        console.log(`🛒 ${carts.length} paniers chargés`);
         updateStats();
         renderCarts();
     }, (error) => {
@@ -244,45 +312,94 @@ function updateStats() {
 
 async function addProduct() {
     if (!window.db) {
-        alert("Firestore non initialisé");
+        showMessage("Firestore non initialisé", "error");
         return;
     }
     
-    const name = document.getElementById("productName").value;
+    // Récupérer les valeurs du formulaire
+    const name = document.getElementById("productName").value.trim();
     const category = document.getElementById("productCategory").value;
     const price = parseFloat(document.getElementById("productPrice").value);
-    const originalPrice = parseFloat(document.getElementById("productOriginalPrice").value);
-    const description = document.getElementById("productDescription").value;
+    const originalPrice = parseFloat(document.getElementById("productOriginalPrice").value) || price;
+    const description = document.getElementById("productDescription").value.trim();
     
     // Récupérer les URLs des images
     const images = [];
     for (let i = 1; i <= 4; i++) {
-        const imageUrl = document.getElementById(`productImage${i}`).value;
-        if (imageUrl) images.push(imageUrl);
+        const imageInput = document.getElementById(`productImage${i}`);
+        if (imageInput && imageInput.value.trim()) {
+            images.push(imageInput.value.trim());
+        }
     }
     
-    if (!name || !category || isNaN(price) || isNaN(originalPrice)) {
-        alert("Veuillez remplir tous les champs obligatoires");
+    // Validation
+    if (!name) {
+        showMessage("Veuillez entrer un nom de produit", "error");
+        return;
+    }
+    
+    if (!category) {
+        showMessage("Veuillez sélectionner une catégorie", "error");
+        return;
+    }
+    
+    if (isNaN(price) || price <= 0) {
+        showMessage("Veuillez entrer un prix valide", "error");
+        return;
+    }
+    
+    if (images.length === 0) {
+        showMessage("Veuillez ajouter au moins une image", "error");
         return;
     }
     
     try {
+        // Préparer les données du produit
         const productData = {
-            name,
-            category,
-            price,
-            originalPrice,
-            description: description || "",
-            images,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            name: name,
+            category: category,
+            price: price,
+            originalPrice: originalPrice > price ? originalPrice : price,
+            description: description || "Produit de qualité Valy la Negra",
+            images: images,
+            inStock: true,
+            featured: false,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         };
         
+        // Afficher un indicateur de chargement
+        const submitBtn = document.querySelector('#productForm button[type="submit"]');
+        const originalText = submitBtn.textContent;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Ajout en cours...';
+        submitBtn.disabled = true;
+        
+        // Ajouter le produit à Firestore
         await window.db.collection("products").add(productData);
-        alert("Produit ajouté avec succès!");
+        
+        // Réinitialiser le formulaire
         document.getElementById("productForm").reset();
+        
+        // Réinitialiser les aperçus d'images
+        for (let i = 1; i <= 4; i++) {
+            const preview = document.getElementById(`imagePreview${i}`);
+            if (preview) preview.innerHTML = `<div class="image-preview-placeholder">Image ${i}</div>`;
+        }
+        
+        // Restaurer le bouton
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+        
+        showMessage("✅ Produit ajouté avec succès! Il apparaîtra sur le site immédiatement.", "success");
+        
     } catch (error) {
-        console.error("Erreur lors de l'ajout du produit:", error);
-        alert("Erreur lors de l'ajout du produit: " + error.message);
+        console.error("Erreur ajout produit:", error);
+        showMessage("❌ Erreur lors de l'ajout: " + error.message, "error");
+        
+        // Restaurer le bouton en cas d'erreur
+        const submitBtn = document.querySelector('#productForm button[type="submit"]');
+        submitBtn.innerHTML = '<i class="fas fa-plus"></i> Ajouter le produit';
+        submitBtn.disabled = false;
     }
 }
 
@@ -291,28 +408,126 @@ function renderProducts() {
     if (!productsList) return;
     
     if (products.length === 0) {
-        productsList.innerHTML = "<p>Aucun produit trouvé</p>";
+        productsList.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-box-open" style="font-size:3rem;color:#ccc;margin-bottom:1rem;"></i>
+                <h3>Aucun produit en ligne</h3>
+                <p>Commencez par ajouter votre premier produit</p>
+                <button onclick="showSection('addProduct')" class="btn-primary" style="margin-top:1rem;">
+                    <i class="fas fa-plus"></i> Ajouter un produit
+                </button>
+            </div>
+        `;
         return;
     }
     
-    productsList.innerHTML = `
-        <h3>Liste des produits (${products.length})</h3>
-        <div class="product-grid">
-            ${products.map(product => `
-                <div class="product-card">
-                    ${product.images && product.images.length > 0 ? 
-                        `<img src="${product.images[0]}" alt="${product.name}" style="width:100%;height:200px;object-fit:cover;border-radius:0.5rem;">` : 
-                        '<div style="width:100%;height:200px;background:#ffe6f2;display:flex;align-items:center;justify-content:center;border-radius:0.5rem;"><i class="fas fa-image" style="font-size:3rem;color:#ff4d94;"></i></div>'
-                    }
-                    <h3>${product.name}</h3>
-                    <p>Catégorie: ${product.category}</p>
-                    <p>Prix: $${product.price.toFixed(2)}</p>
-                    <p>Prix original: $${product.originalPrice.toFixed(2)}</p>
-                    <button class="btn btn-danger" onclick="deleteProduct('${product.id}')">
-                        <i class="fas fa-trash"></i> Supprimer
+    // Grouper les produits par catégorie
+    const productsByCategory = {};
+    products.forEach(product => {
+        if (!productsByCategory[product.category]) {
+            productsByCategory[product.category] = [];
+        }
+        productsByCategory[product.category].push(product);
+    });
+    
+    let html = `
+        <div class="section-header">
+            <h3>📦 Produits en ligne (${products.length})</h3>
+            <div class="category-filters">
+                <button class="filter-btn active" data-category="all">Tous</button>
+                ${Object.keys(productsByCategory).map(category => `
+                    <button class="filter-btn" data-category="${category}">
+                        ${CATEGORY_LABELS[category] || category} (${productsByCategory[category].length})
+                    </button>
+                `).join('')}
+            </div>
+        </div>
+    `;
+    
+    // Afficher tous les produits par défaut
+    html += '<div class="products-grid-admin" id="allProducts">';
+    html += products.map(product => createProductCard(product)).join('');
+    html += '</div>';
+    
+    // Ajouter des sections par catégorie
+    Object.keys(productsByCategory).forEach(category => {
+        html += `
+            <div class="category-section" id="category-${category}" style="display: none;">
+                <h4>${CATEGORY_LABELS[category] || category} (${productsByCategory[category].length})</h4>
+                <div class="products-grid-admin">
+                    ${productsByCategory[category].map(product => createProductCard(product)).join('')}
+                </div>
+            </div>
+        `;
+    });
+    
+    productsList.innerHTML = html;
+    
+    // Ajouter les événements de filtre
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const category = this.dataset.category;
+            
+            // Mettre à jour les boutons actifs
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            
+            // Afficher/masquer les sections
+            if (category === 'all') {
+                document.getElementById('allProducts').style.display = 'grid';
+                document.querySelectorAll('.category-section').forEach(section => {
+                    section.style.display = 'none';
+                });
+            } else {
+                document.getElementById('allProducts').style.display = 'none';
+                document.querySelectorAll('.category-section').forEach(section => {
+                    section.style.display = 'none';
+                });
+                document.getElementById(`category-${category}`).style.display = 'block';
+            }
+        });
+    });
+}
+
+function createProductCard(product) {
+    const discount = product.originalPrice > product.price ? 
+        Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100) : 0;
+    
+    return `
+        <div class="product-card-admin" data-category="${product.category}">
+            <div class="product-image-admin">
+                ${product.images && product.images.length > 0 ? 
+                    `<img src="${product.images[0]}" alt="${product.name}" onclick="previewProduct('${product.id}')">` : 
+                    '<div class="no-image"><i class="fas fa-image"></i></div>'
+                }
+                <div class="product-actions">
+                    <button class="btn-small btn-primary" onclick="editProduct('${product.id}')" title="Modifier">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn-small btn-danger" onclick="deleteProduct('${product.id}')" title="Supprimer">
+                        <i class="fas fa-trash"></i>
                     </button>
                 </div>
-            `).join('')}
+                ${discount > 0 ? `<div class="discount-badge">-${discount}%</div>` : ''}
+            </div>
+            <div class="product-info-admin">
+                <h4>${product.name}</h4>
+                <div class="product-meta">
+                    <span class="category-badge">${CATEGORY_LABELS[product.category] || product.category}</span>
+                    <span class="stock-badge ${product.inStock ? 'in-stock' : 'out-of-stock'}">
+                        ${product.inStock ? 'En stock' : 'Rupture'}
+                    </span>
+                </div>
+                <div class="product-price-admin">
+                    <span class="current-price">$${product.price.toFixed(2)}</span>
+                    ${discount > 0 ? `<span class="original-price">$${product.originalPrice.toFixed(2)}</span>` : ''}
+                </div>
+                <p class="product-description-admin">${product.description || 'Aucune description'}</p>
+                <div class="product-stats">
+                    <small><i class="fas fa-images"></i> ${product.images ? product.images.length : 0} images</small>
+                    <small><i class="fas fa-calendar"></i> ${formatDate(product.createdAt)}</small>
+                </div>
+            </div>
         </div>
     `;
 }
@@ -327,15 +542,15 @@ function renderUsers() {
     }
     
     usersList.innerHTML = `
-        <h3>Liste des utilisateurs (${users.length})</h3>
+        <h3>👥 Liste des utilisateurs (${users.length})</h3>
         ${users.map(user => `
             <div class="user-card">
                 <h3>${user.name || 'Non renseigné'}</h3>
-                <p>Email: ${user.email || 'Non renseigné'}</p>
-                <p>Téléphone: ${user.phone || 'Non renseigné'}</p>
-                <p>Inscrit le: ${formatDate(user.registeredAt)}</p>
-                <span class="badge" style="background: ${user.isActive ? '#ff4d94' : '#6b7280'}; color: white; padding: 0.25rem 0.5rem; border-radius: 0.25rem;">
-                    ${user.isActive ? 'Active' : 'Inactive'}
+                <p><i class="fas fa-envelope"></i> Email: ${user.email || 'Non renseigné'}</p>
+                <p><i class="fas fa-phone"></i> Téléphone: ${user.phone || 'Non renseigné'}</p>
+                <p><i class="fas fa-calendar"></i> Inscrit le: ${formatDate(user.registeredAt)}</p>
+                <span class="badge ${user.isActive ? 'active' : 'inactive'}">
+                    ${user.isActive ? '🟢 Active' : '🔴 Inactive'}
                 </span>
             </div>
         `).join('')}
@@ -352,14 +567,14 @@ function renderOrders() {
     }
     
     ordersList.innerHTML = `
-        <h3>Liste des commandes (${orders.length})</h3>
+        <h3>📦 Liste des commandes (${orders.length})</h3>
         ${orders.map(order => `
             <div class="order-item">
                 <h3>Commande #${order.id.substring(0, 8)}</h3>
-                <p>Client: ${order.customerName || 'Non renseigné'}</p>
-                <p>Total: $${order.totalAmount ? order.totalAmount.toFixed(2) : '0.00'}</p>
-                <p>Statut: ${order.status || 'En attente'}</p>
-                <p>Date: ${formatDate(order.createdAt)}</p>
+                <p><i class="fas fa-user"></i> Client: ${order.customerName || 'Non renseigné'}</p>
+                <p><i class="fas fa-dollar-sign"></i> Total: $${order.totalAmount ? order.totalAmount.toFixed(2) : '0.00'}</p>
+                <p><i class="fas fa-info-circle"></i> Statut: ${order.status || 'En attente'}</p>
+                <p><i class="fas fa-calendar"></i> Date: ${formatDate(order.createdAt)}</p>
                 <button class="btn btn-primary" onclick="viewOrderDetails('${order.id}')">
                     <i class="fas fa-eye"></i> Voir les détails
                 </button>
@@ -378,13 +593,13 @@ function renderCarts() {
     }
     
     cartsList.innerHTML = `
-        <h3>Paniers actifs (${carts.length})</h3>
+        <h3>🛒 Paniers actifs (${carts.length})</h3>
         ${carts.map(cart => `
             <div class="cart-item-admin">
                 <h3>Panier #${cart.id.substring(0, 8)}</h3>
-                <p>Total: $${cart.totalAmount ? cart.totalAmount.toFixed(2) : '0.00'}</p>
-                <p>Nombre d'articles: ${cart.items ? cart.items.length : 0}</p>
-                <p>Dernière mise à jour: ${formatDate(cart.lastUpdated)}</p>
+                <p><i class="fas fa-dollar-sign"></i> Total: $${cart.totalAmount ? cart.totalAmount.toFixed(2) : '0.00'}</p>
+                <p><i class="fas fa-cube"></i> Articles: ${cart.items ? cart.items.length : 0}</p>
+                <p><i class="fas fa-clock"></i> Dernière mise à jour: ${formatDate(cart.lastUpdated)}</p>
             </div>
         `).join('')}
     `;
@@ -395,7 +610,7 @@ function formatDate(dateValue) {
     
     try {
         const date = dateValue.toDate ? dateValue.toDate() : new Date(dateValue);
-        return date.toLocaleDateString('fr-FR');
+        return date.toLocaleDateString('fr-FR') + ' à ' + date.toLocaleTimeString('fr-FR');
     } catch (e) {
         return 'Date invalide';
     }
@@ -432,24 +647,45 @@ window.showSection = function(sectionName) {
 // Fonctions pour la gestion des produits
 window.deleteProduct = async function(id) {
     if (!window.db) {
-        alert("Firestore non initialisé");
+        showMessage("Firestore non initialisé", "error");
         return;
     }
     
-    if (confirm("Êtes-vous sûr de vouloir supprimer ce produit?")) {
+    if (confirm("Êtes-vous sûr de vouloir supprimer ce produit? Cette action est irréversible.")) {
         try {
             await window.db.collection("products").doc(id).delete();
-            alert("Produit supprimé avec succès");
+            showMessage("✅ Produit supprimé avec succès", "success");
         } catch (error) {
             console.error("Erreur lors de la suppression:", error);
-            alert("Erreur lors de la suppression du produit: " + error.message);
+            showMessage("❌ Erreur lors de la suppression: " + error.message, "error");
         }
     }
+}
+
+window.previewProduct = function(productId) {
+    const product = products.find(p => p.id === productId);
+    if (!product) return;
+    
+    const imagesHTML = product.images && product.images.length > 0 ? 
+        product.images.map(img => `<img src="${img}" style="max-width:200px;margin:5px;border-radius:8px;">`).join('') : 
+        '<p>Aucune image</p>';
+    
+    showMessage(`
+        <strong>${product.name}</strong><br>
+        Catégorie: ${CATEGORY_LABELS[product.category] || product.category}<br>
+        Prix: $${product.price.toFixed(2)}<br>
+        ${product.originalPrice > product.price ? `Ancien prix: $${product.originalPrice.toFixed(2)}<br>` : ''}
+        <div style="margin-top:10px;">${imagesHTML}</div>
+    `, "info", 5000);
 }
 
 window.viewOrderDetails = function(orderId) {
     const order = orders.find(o => o.id === orderId);
     if (!order) return;
+    
+    const itemsHTML = order.items ? order.items.map(item => 
+        `- ${item.quantity}x ${item.name} (${item.size}, ${item.color}): $${item.price ? item.price.toFixed(2) : '0.00'}`
+    ).join('<br>') : 'Aucun article';
     
     alert(`Détails de la commande #${orderId.substring(0, 8)}\n
 Client: ${order.customerName || 'Non renseigné'}
@@ -458,5 +694,57 @@ Téléphone: ${order.customerPhone || 'Non renseigné'}
 Total: $${order.totalAmount ? order.totalAmount.toFixed(2) : '0.00'}
 Statut: ${order.status || 'En attente'}
 Adresse: ${order.shippingAddress || 'Non renseignée'}
-\nArticles:\n${order.items ? order.items.map(item => `- ${item.quantity}x ${item.name} (${item.size}, ${item.color}): $${item.price ? item.price.toFixed(2) : '0.00'}`).join('\n') : 'Aucun article'}`);
+
+Articles:
+${itemsHTML}`);
 }
+
+// Fonction d'affichage des messages améliorée
+function showMessage(message, type = "info", duration = 3000) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${type}`;
+    messageDiv.innerHTML = `
+        <i class="fas fa-${getMessageIcon(type)}"></i>
+        <span>${message}</span>
+    `;
+    
+    document.body.appendChild(messageDiv);
+    
+    setTimeout(() => {
+        messageDiv.classList.add('show');
+    }, 100);
+    
+    setTimeout(() => {
+        messageDiv.classList.remove('show');
+        setTimeout(() => {
+            if (messageDiv.parentNode) {
+                messageDiv.parentNode.removeChild(messageDiv);
+            }
+        }, 300);
+    }, duration);
+}
+
+function getMessageIcon(type) {
+    const icons = {
+        'success': 'check-circle',
+        'error': 'exclamation-circle',
+        'warning': 'exclamation-triangle',
+        'info': 'info-circle'
+    };
+    return icons[type] || 'info-circle';
+}
+
+// Gestion des aperçus d'images
+document.addEventListener('input', function(e) {
+    if (e.target.id && e.target.id.startsWith('productImage')) {
+        const index = e.target.id.replace('productImage', '');
+        const preview = document.getElementById('imagePreview' + index);
+        if (preview && e.target.value.trim()) {
+            preview.innerHTML = `<img src="${e.target.value}" alt="Preview" style="max-width:100px;max-height:100px;border-radius:4px;">`;
+        } else if (preview) {
+            preview.innerHTML = `<div class="image-preview-placeholder">Image ${index}</div>`;
+        }
+    }
+});
+
+console.log("✅ Admin Valy la Negra prêt !");
