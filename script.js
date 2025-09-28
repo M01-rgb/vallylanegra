@@ -736,11 +736,14 @@ function renderPaypalButton(totalPrice) {
   container.innerHTML = "";
   
   if (typeof totalPrice !== 'number' || totalPrice <= 0) {
-    console.error("Montant PayPal invalide:", totalPrice);
+    console.error("❌ Montant PayPal invalide:", totalPrice);
+    showMessage("Erreur: Montant du panier invalide", 'error');
     return;
   }
 
   try {
+    console.log("💰 Initialisation PayPal avec montant:", totalPrice.toFixed(2));
+    
     window.paypal.Buttons({
       style: { 
         layout: 'vertical', 
@@ -758,20 +761,48 @@ function renderPaypalButton(totalPrice) {
           return Promise.reject(new Error("Adresse manquante"));
         }
         
-        return actions.order.create({
-          purchase_units: [{
-            amount: { 
-              value: totalPrice.toFixed(2),
+        // Validation du montant
+        if (totalPrice <= 0 || isNaN(totalPrice)) {
+          showMessage("Erreur: Montant du panier invalide", 'error');
+          return Promise.reject(new Error("Montant invalide"));
+        }
+        
+        const purchaseUnit = {
+          amount: {
+            value: totalPrice.toFixed(2),
+            currency_code: "USD",
+            breakdown: {
+              item_total: {
+                value: totalPrice.toFixed(2),
+                currency_code: "USD"
+              }
+            }
+          },
+          items: cart.map(item => ({
+            name: item.name,
+            description: `${item.size} - ${item.color}`,
+            quantity: item.quantity.toString(),
+            unit_amount: {
+              value: item.price.toFixed(2),
               currency_code: "USD"
-            },
-            description: "Achat Valy la Negra"
-          }],
+            }
+          }))
+        };
+        
+        console.log("📦 Données envoyées à PayPal:", purchaseUnit);
+        
+        return actions.order.create({
+          purchase_units: [purchaseUnit],
           application_context: {
             shipping_preference: "NO_SHIPPING"
           }
+        }).then(order => {
+          console.log("✅ Commande PayPal créée:", order.id);
+          return order;
         }).catch(error => {
           console.error("❌ Erreur création commande PayPal:", error);
-          showMessage("Erreur lors de la création de la commande PayPal", 'error');
+          console.error("Détails de l'erreur:", JSON.stringify(error, null, 2));
+          showMessage("Erreur lors de la création de la commande PayPal. Vérifiez vos informations.", 'error');
           throw error;
         });
       },
@@ -784,7 +815,7 @@ function renderPaypalButton(totalPrice) {
           
           try {
             await createOrder(details, getShippingAddress());
-            showMessage(`Paiement réussi, merci ${details.payer.name.given_name} !`, 'success');
+            showMessage(`Paiement réussi, merci ${details.payer.name.given_name} ! 🎉`, 'success');
             cart = [];
             saveCart();
             
@@ -799,7 +830,8 @@ function renderPaypalButton(totalPrice) {
           }
         }).catch(error => {
           console.error("❌ Erreur capture paiement PayPal:", error);
-          showMessage("Erreur lors du traitement du paiement", 'error');
+          console.error("Détails capture:", JSON.stringify(error, null, 2));
+          showMessage("Erreur lors du traitement du paiement PayPal", 'error');
         });
       },
       
@@ -810,6 +842,8 @@ function renderPaypalButton(totalPrice) {
       
       onError: function(err) {
         console.error("❌ Erreur PayPal:", err);
+        console.error("Détails erreur:", JSON.stringify(err, null, 2));
+        
         let errorMessage = "Erreur lors du processus de paiement";
         
         if (err && err.message) {
@@ -817,6 +851,8 @@ function renderPaypalButton(totalPrice) {
             errorMessage = "Problème de connexion. Vérifiez votre internet.";
           } else if (err.message.includes("popup")) {
             errorMessage = "Popup PayPal bloqué. Autorisez les popups pour ce site.";
+          } else if (err.message.includes("422")) {
+            errorMessage = "Erreur de données. Vérifiez les informations de votre panier.";
           }
         }
         
@@ -829,7 +865,7 @@ function renderPaypalButton(totalPrice) {
         // Validation avant ouverture de PayPal
         if (!validateAddressForm()) {
           showMessage("Veuillez remplir tous les champs de l'adresse de livraison", 'error');
-          return false; // Empêcher l'ouverture de PayPal
+          return false;
         }
         
         if (cart.length === 0) {
@@ -837,6 +873,14 @@ function renderPaypalButton(totalPrice) {
           return false;
         }
         
+        // Validation du montant total
+        const totalPrice = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        if (totalPrice <= 0 || isNaN(totalPrice)) {
+          showMessage("Erreur: Montant du panier invalide", 'error');
+          return false;
+        }
+        
+        console.log("✅ Validation passée, ouverture de PayPal...");
         return true;
       }
       
@@ -858,7 +902,9 @@ function validateAddressForm() {
   const zip = document.getElementById("shippingZip")?.value.trim();
   const phone = document.getElementById("shippingPhone")?.value.trim();
   
-  return name && address && city && zip && phone;
+  const isValid = !!(name && address && city && zip && phone);
+  console.log("📝 Validation adresse:", isValid, {name, address, city, zip, phone});
+  return isValid;
 }
 
 // Obtenir l'adresse complète
@@ -892,7 +938,7 @@ async function processCashPayment() {
   try {
     const shippingAddress = getShippingAddress();
     await createOrder({ id: 'cash_payment_' + Date.now(), payer: { payer_id: 'cash' } }, shippingAddress);
-    showMessage("Commande confirmée ! Vous paierez à la livraison.", 'success');
+    showMessage("Commande confirmée ! Vous paierez à la livraison. 📦", 'success');
     cart = [];
     saveCart();
     
