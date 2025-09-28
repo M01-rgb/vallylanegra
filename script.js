@@ -588,6 +588,7 @@ function updateCartUI() {
   const cartCount = document.getElementById("cartCount");
   const cartItems = document.getElementById("cartItems");
   const cartTotal = document.getElementById("cartTotal");
+  const paypalContainer = document.getElementById("paypal-button-container");
 
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
   const totalPrice = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -604,43 +605,56 @@ function updateCartUI() {
         <p>Votre panier est vide</p>
       </div>
     `;
-    const paypalDiv = document.getElementById("paypal-button-container");
-    if (paypalDiv) paypalDiv.innerHTML = '';
-    const addressForm = document.getElementById("addressForm");
-    if (addressForm) addressForm.style.display = 'none';
+    if (paypalContainer) paypalContainer.innerHTML = '';
   } else {
-    cartItems.innerHTML = cart.map(item => `
-      <div class="cart-item">
-        <img src="${item.image}" alt="${item.name}">
-        <div class="cart-item-info">
-          <div class="cart-item-name">${item.name}</div>
-          <div style="font-size:0.9em;color:#666;">${item.size ? `Taille/Modèle: <b>${item.size}</b>, ` : ''}Couleur: <b>${item.color}</b></div>
-          <div class="cart-item-price">$${item.price.toFixed(2)}</div>
-          <div class="quantity-controls">
-            <button class="quantity-btn" onclick="updateQuantity('${item.key}', ${item.quantity - 1})">-</button>
-            <span>${item.quantity}</span>
-            <button class="quantity-btn" onclick="updateQuantity('${item.key}', ${item.quantity + 1})">+</button>
-            <button class="quantity-btn" onclick="removeFromCart('${item.key}')" style="margin-left: 1rem; color: #ff3366;">
-              <i class="fas fa-trash"></i>
-            </button>
+    // Construire le HTML du panier avec le formulaire d'adresse
+    cartItems.innerHTML = `
+      <div class="cart-items-list">
+        ${cart.map(item => `
+          <div class="cart-item">
+            <img src="${item.image}" alt="${item.name}">
+            <div class="cart-item-info">
+              <div class="cart-item-name">${item.name}</div>
+              <div style="font-size:0.9em;color:#666;">
+                ${item.size ? `Taille/Modèle: <b>${item.size}</b>, ` : ''}Couleur: <b>${item.color}</b>
+              </div>
+              <div class="cart-item-price">$${item.price.toFixed(2)}</div>
+              <div class="quantity-controls">
+                <button class="quantity-btn" onclick="updateQuantity('${item.key}', ${item.quantity - 1})">-</button>
+                <span>${item.quantity}</span>
+                <button class="quantity-btn" onclick="updateQuantity('${item.key}', ${item.quantity + 1})">+</button>
+                <button class="quantity-btn" onclick="removeFromCart('${item.key}')" style="margin-left: 1rem; color: #ff3366;">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </div>
+            </div>
           </div>
+        `).join("")}
+      </div>
+      
+      <!-- Formulaire d'adresse TOUJOURS visible quand le panier n'est pas vide -->
+      <div id="addressForm" class="address-form">
+        <h4 style="margin-bottom: 1rem; color: #333;">📦 Adresse de livraison</h4>
+        <div class="form-group">
+          <label for="shippingAddress" style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: #555;">
+            Adresse complète *
+          </label>
+          <textarea 
+            id="shippingAddress" 
+            rows="3" 
+            placeholder="Entrez votre adresse complète pour la livraison (rue, numéro, ville, code postal, pays)..." 
+            required
+            style="width: 100%; padding: 0.75rem; border: 2px solid #ff4d94; border-radius: 0.5rem; font-size: 0.9rem; resize: vertical;"
+          ></textarea>
+          <small style="color: #666; display: block; margin-top: 0.25rem;">
+            ⚠️ Cette adresse sera utilisée pour livrer votre commande
+          </small>
         </div>
       </div>
-    `).join("");
-    
-    // Ajouter le formulaire d'adresse si nécessaire
-    if (!document.getElementById("addressForm")) {
-      const addressFormHTML = `
-        <div id="addressForm" style="margin-top: 1.5rem; padding: 1rem; background: #ffe6f2; border-radius: 0.5rem;">
-          <h4 style="margin-bottom: 1rem;">Adresse de livraison</h4>
-          <div class="form-group">
-            <label for="shippingAddress">Adresse complète</label>
-            <textarea id="shippingAddress" rows="3" placeholder="Entrez votre adresse complète pour la livraison" required></textarea>
-          </div>
-        </div>
-      `;
-      cartItems.insertAdjacentHTML('beforeend', addressFormHTML);
-    }
+      
+      <!-- Container PayPal -->
+      <div id="paypal-button-container" style="margin-top: 1.5rem;"></div>
+    `;
     
     // Gestion PayPal
     setTimeout(() => {
@@ -670,6 +684,7 @@ window.removeFromCart = function(key) {
 function renderPaypalButton(totalPrice) {
   if (!window.paypal) {
     console.warn("PayPal SDK non chargé");
+    showMessage("Système de paiement temporairement indisponible", 'error');
     return;
   }
   
@@ -691,53 +706,101 @@ function renderPaypalButton(totalPrice) {
         shape: 'rect', 
         label: 'paypal' 
       },
+      
       createOrder: function(data, actions) {
         console.log("🔄 Création de la commande PayPal...");
+        
+        // Validation avant création de commande
+        const shippingAddress = document.getElementById("shippingAddress")?.value;
+        if (!shippingAddress || shippingAddress.trim() === '') {
+          showMessage("Veuillez remplir votre adresse de livraison", 'error');
+          return Promise.reject(new Error("Adresse manquante"));
+        }
+        
         return actions.order.create({
           purchase_units: [{
             amount: { 
               value: totalPrice.toFixed(2),
               currency_code: "USD"
-            }
-          }]
+            },
+            description: "Achat Valy la Negra"
+          }],
+          application_context: {
+            shipping_preference: "NO_SHIPPING"
+          }
         }).catch(error => {
           console.error("❌ Erreur création commande PayPal:", error);
-          showMessage("Erreur lors de la création de la commande", 'error');
+          showMessage("Erreur lors de la création de la commande PayPal", 'error');
           throw error;
         });
       },
+      
       onApprove: function(data, actions) {
-        console.log("✅ Commande approuvée, capture en cours...");
+        console.log("✅ Commande approuvée, capture en cours...", data);
+        
         return actions.order.capture().then(async function(details) {
           console.log("💰 Paiement réussi:", details);
           const shippingAddress = document.getElementById("shippingAddress")?.value || "Non spécifiée";
-          await createOrder(details, shippingAddress);
           
-          showMessage(`Paiement réussi, merci ${details.payer.name.given_name} !`, 'success');
-          cart = [];
-          saveCart();
+          try {
+            await createOrder(details, shippingAddress);
+            showMessage(`Paiement réussi, merci ${details.payer.name.given_name} !`, 'success');
+            cart = [];
+            saveCart();
+            
+            // Fermer le panier après paiement réussi
+            setTimeout(() => {
+              closeAllPanels();
+            }, 2000);
+            
+          } catch (error) {
+            console.error("❌ Erreur création commande après paiement:", error);
+            showMessage("Paiement réussi mais erreur d'enregistrement. Contactez-nous.", 'error');
+          }
         }).catch(error => {
           console.error("❌ Erreur capture paiement PayPal:", error);
           showMessage("Erreur lors du traitement du paiement", 'error');
         });
       },
+      
       onCancel: function(data) {
-        console.log("❌ Paiement annulé par l'utilisateur");
+        console.log("❌ Paiement annulé par l'utilisateur:", data);
         showMessage("Paiement annulé", 'info');
       },
+      
       onError: function(err) {
         console.error("❌ Erreur PayPal:", err);
-        showMessage("Erreur lors du processus de paiement", 'error');
+        let errorMessage = "Erreur lors du processus de paiement";
+        
+        if (err && err.message) {
+          if (err.message.includes("fetch")) {
+            errorMessage = "Problème de connexion. Vérifiez votre internet.";
+          } else if (err.message.includes("popup")) {
+            errorMessage = "Popup PayPal bloqué. Autorisez les popups pour ce site.";
+          }
+        }
+        
+        showMessage(errorMessage, 'error');
       },
-      onClick: function() {
-        // Vérifier que l'adresse est remplie avant de permettre le paiement
+      
+      onClick: function(data, actions) {
+        console.log("🖱️ Clic sur le bouton PayPal");
+        
+        // Validation avant ouverture de PayPal
         const shippingAddress = document.getElementById("shippingAddress")?.value;
         if (!shippingAddress || shippingAddress.trim() === '') {
           showMessage("Veuillez remplir votre adresse de livraison", 'error');
           return false; // Empêcher l'ouverture de PayPal
         }
+        
+        if (cart.length === 0) {
+          showMessage("Votre panier est vide", 'error');
+          return false;
+        }
+        
         return true;
       }
+      
     }).render('#paypal-button-container').catch(error => {
       console.error("❌ Erreur rendu bouton PayPal:", error);
       showMessage("Erreur d'initialisation du paiement", 'error');
@@ -750,7 +813,9 @@ function renderPaypalButton(totalPrice) {
 
 // Créer une commande dans Firestore
 async function createOrder(paymentDetails, shippingAddress) {
-  if (!currentUser || !db) return;
+  if (!currentUser || !db) {
+    throw new Error("Utilisateur non connecté ou base de données indisponible");
+  }
   
   try {
     const orderData = {
@@ -761,13 +826,17 @@ async function createOrder(paymentDetails, shippingAddress) {
       items: cart,
       totalAmount: cart.reduce((total, item) => total + (item.price * item.quantity), 0),
       paymentId: paymentDetails.id,
+      payerId: paymentDetails.payer.payer_id,
       paymentStatus: 'completed',
       shippingAddress: shippingAddress,
       status: 'processing',
-      createdAt: serverTimestamp()
+      createdAt: serverTimestamp(),
+      completedAt: serverTimestamp()
     };
     
-    await addDoc(collection(db, "orders"), orderData);
+    const orderRef = await addDoc(collection(db, "orders"), orderData);
+    console.log("✅ Commande créée avec ID:", orderRef.id);
+    
     await sendOrderConfirmationEmail(orderData);
     
     // Vider le panier dans Firestore
@@ -783,10 +852,10 @@ async function createOrder(paymentDetails, shippingAddress) {
       });
     }
     
-    console.log("✅ Commande créée avec succès");
+    return orderRef.id;
   } catch (error) {
     console.error("❌ Erreur création commande:", error);
-    showMessage("Erreur lors de l'enregistrement de la commande", 'error');
+    throw error;
   }
 }
 
@@ -796,6 +865,8 @@ async function sendOrderConfirmationEmail(orderData) {
   console.log("À: ", orderData.customerEmail);
   console.log("Sujet: Confirmation de commande Valy la Negra");
   console.log("Merci pour votre commande !");
+  console.log("Montant: $", orderData.totalAmount);
+  console.log("Articles: ", orderData.items.length);
   return true;
 }
 
