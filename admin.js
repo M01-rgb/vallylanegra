@@ -32,7 +32,7 @@ const CATEGORY_LABELS = {
     'health': '💊 Santé',
     'fitness': '💪 Fitness',
     'automotive': '🚗 Auto',
-    'garden': '🌿 Jardin'
+    'hair': '🌿 Cheveux'
 };
 
 // Initialisation
@@ -748,3 +748,4 @@ document.addEventListener('input', function(e) {
 });
 
 console.log("✅ Admin Valy la Negra prêt !");
+
