@@ -34,6 +34,7 @@ const SIZE_OPTIONS = {
   home: ["Petit", "Moyen", "Grand", "Personnalisé"],
   sports: ["XS", "S", "M", "L", "XL", "XXL"],
   beauty: ["100ml", "200ml", "250ml", "500ml", "1L"],
+  hair: ["10pouces", "12pouces", "14pouces", "16pouces", "18pouces","20pouces","22pouces"], 
   default: ["Unique", "Standard", "Personnalisé"]
 };
 
@@ -822,3 +823,4 @@ function showMessage(message, type = 'info') {
 }
 
 console.log("✅ Script Valy la Negra prêt !");
+
