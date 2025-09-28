@@ -48,6 +48,7 @@ document.addEventListener("DOMContentLoaded", () => {
   checkUserRegistration();
   setupEventListeners();
   setupLightbox();
+  setupPaymentMethods();
   window.toggleCart = toggleCart;
 });
 
@@ -278,6 +279,49 @@ function setupEventListeners() {
         applyFilters();
       }
     });
+  }
+}
+
+function setupPaymentMethods() {
+  // Gestion des méthodes de paiement
+  const paymentRadios = document.querySelectorAll('input[name="payment"]');
+  const paypalSection = document.getElementById('paypal-section');
+  const cardSection = document.getElementById('card-section');
+  const cashSection = document.getElementById('cash-section');
+  
+  paymentRadios.forEach(radio => {
+    radio.addEventListener('change', function() {
+      // Masquer toutes les sections
+      if (paypalSection) paypalSection.style.display = 'none';
+      if (cardSection) cardSection.style.display = 'none';
+      if (cashSection) cashSection.style.display = 'none';
+      
+      // Afficher la section correspondante
+      if (this.value === 'paypal' && paypalSection) {
+        paypalSection.style.display = 'block';
+        // Re-render PayPal button
+        const totalPrice = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        if (totalPrice > 0) {
+          setTimeout(() => renderPaypalButton(totalPrice), 100);
+        }
+      } else if (this.value === 'card' && cardSection) {
+        cardSection.style.display = 'block';
+      } else if (this.value === 'cash' && cashSection) {
+        cashSection.style.display = 'block';
+      }
+    });
+  });
+  
+  // Paiement par carte
+  const payWithCardBtn = document.getElementById('payWithCard');
+  if (payWithCardBtn) {
+    payWithCardBtn.addEventListener('click', processCardPayment);
+  }
+  
+  // Paiement à la livraison
+  const payWithCashBtn = document.getElementById('payWithCash');
+  if (payWithCashBtn) {
+    payWithCashBtn.addEventListener('click', processCashPayment);
   }
 }
 
@@ -588,7 +632,6 @@ function updateCartUI() {
   const cartCount = document.getElementById("cartCount");
   const cartItems = document.getElementById("cartItems");
   const cartTotal = document.getElementById("cartTotal");
-  const paypalContainer = document.getElementById("paypal-button-container");
 
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
   const totalPrice = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -605,9 +648,22 @@ function updateCartUI() {
         <p>Votre panier est vide</p>
       </div>
     `;
-    if (paypalContainer) paypalContainer.innerHTML = '';
+    
+    // Masquer les sections de paiement quand le panier est vide
+    const addressForm = document.getElementById("addressForm");
+    const paymentOptions = document.querySelector(".payment-options");
+    const paypalSection = document.getElementById("paypal-section");
+    const cardSection = document.getElementById("card-section");
+    const cashSection = document.getElementById("cash-section");
+    
+    if (addressForm) addressForm.style.display = 'none';
+    if (paymentOptions) paymentOptions.style.display = 'none';
+    if (paypalSection) paypalSection.style.display = 'none';
+    if (cardSection) cardSection.style.display = 'none';
+    if (cashSection) cashSection.style.display = 'none';
+    
   } else {
-    // Construire le HTML du panier avec le formulaire d'adresse
+    // Afficher seulement la liste des articles
     cartItems.innerHTML = `
       <div class="cart-items-list">
         ${cart.map(item => `
@@ -631,30 +687,16 @@ function updateCartUI() {
           </div>
         `).join("")}
       </div>
-      
-      <!-- Formulaire d'adresse TOUJOURS visible quand le panier n'est pas vide -->
-      <div id="addressForm" class="address-form">
-        <h4 style="margin-bottom: 1rem; color: #333;">📦 Adresse de livraison</h4>
-        <div class="form-group">
-          <label for="shippingAddress" style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: #555;">
-            Adresse complète *
-          </label>
-          <textarea 
-            id="shippingAddress" 
-            rows="3" 
-            placeholder="Entrez votre adresse complète pour la livraison (rue, numéro, ville, code postal, pays)..." 
-            required
-            style="width: 100%; padding: 0.75rem; border: 2px solid #ff4d94; border-radius: 0.5rem; font-size: 0.9rem; resize: vertical;"
-          ></textarea>
-          <small style="color: #666; display: block; margin-top: 0.25rem;">
-            ⚠️ Cette adresse sera utilisée pour livrer votre commande
-          </small>
-        </div>
-      </div>
-      
-      <!-- Container PayPal -->
-      <div id="paypal-button-container" style="margin-top: 1.5rem;"></div>
     `;
+    
+    // Afficher les sections de paiement
+    const addressForm = document.getElementById("addressForm");
+    const paymentOptions = document.querySelector(".payment-options");
+    const paypalSection = document.getElementById("paypal-section");
+    
+    if (addressForm) addressForm.style.display = 'block';
+    if (paymentOptions) paymentOptions.style.display = 'block';
+    if (paypalSection) paypalSection.style.display = 'block';
     
     // Gestion PayPal
     setTimeout(() => {
@@ -711,9 +753,8 @@ function renderPaypalButton(totalPrice) {
         console.log("🔄 Création de la commande PayPal...");
         
         // Validation avant création de commande
-        const shippingAddress = document.getElementById("shippingAddress")?.value;
-        if (!shippingAddress || shippingAddress.trim() === '') {
-          showMessage("Veuillez remplir votre adresse de livraison", 'error');
+        if (!validateAddressForm()) {
+          showMessage("Veuillez remplir tous les champs de l'adresse de livraison", 'error');
           return Promise.reject(new Error("Adresse manquante"));
         }
         
@@ -740,10 +781,9 @@ function renderPaypalButton(totalPrice) {
         
         return actions.order.capture().then(async function(details) {
           console.log("💰 Paiement réussi:", details);
-          const shippingAddress = document.getElementById("shippingAddress")?.value || "Non spécifiée";
           
           try {
-            await createOrder(details, shippingAddress);
+            await createOrder(details, getShippingAddress());
             showMessage(`Paiement réussi, merci ${details.payer.name.given_name} !`, 'success');
             cart = [];
             saveCart();
@@ -787,9 +827,8 @@ function renderPaypalButton(totalPrice) {
         console.log("🖱️ Clic sur le bouton PayPal");
         
         // Validation avant ouverture de PayPal
-        const shippingAddress = document.getElementById("shippingAddress")?.value;
-        if (!shippingAddress || shippingAddress.trim() === '') {
-          showMessage("Veuillez remplir votre adresse de livraison", 'error');
+        if (!validateAddressForm()) {
+          showMessage("Veuillez remplir tous les champs de l'adresse de livraison", 'error');
           return false; // Empêcher l'ouverture de PayPal
         }
         
@@ -811,6 +850,62 @@ function renderPaypalButton(totalPrice) {
   }
 }
 
+// Valider le formulaire d'adresse
+function validateAddressForm() {
+  const name = document.getElementById("shippingName")?.value.trim();
+  const address = document.getElementById("shippingAddress")?.value.trim();
+  const city = document.getElementById("shippingCity")?.value.trim();
+  const zip = document.getElementById("shippingZip")?.value.trim();
+  const phone = document.getElementById("shippingPhone")?.value.trim();
+  
+  return name && address && city && zip && phone;
+}
+
+// Obtenir l'adresse complète
+function getShippingAddress() {
+  const name = document.getElementById("shippingName")?.value.trim();
+  const address = document.getElementById("shippingAddress")?.value.trim();
+  const city = document.getElementById("shippingCity")?.value.trim();
+  const zip = document.getElementById("shippingZip")?.value.trim();
+  const phone = document.getElementById("shippingPhone")?.value.trim();
+  
+  return `${name}, ${address}, ${city} ${zip}, Tél: ${phone}`;
+}
+
+// Paiement par carte
+function processCardPayment() {
+  if (!validateAddressForm()) {
+    showMessage("Veuillez remplir tous les champs de l'adresse de livraison", 'error');
+    return;
+  }
+  
+  showMessage("Paiement par carte en cours de développement...", 'info');
+}
+
+// Paiement à la livraison
+async function processCashPayment() {
+  if (!validateAddressForm()) {
+    showMessage("Veuillez remplir tous les champs de l'adresse de livraison", 'error');
+    return;
+  }
+  
+  try {
+    const shippingAddress = getShippingAddress();
+    await createOrder({ id: 'cash_payment_' + Date.now(), payer: { payer_id: 'cash' } }, shippingAddress);
+    showMessage("Commande confirmée ! Vous paierez à la livraison.", 'success');
+    cart = [];
+    saveCart();
+    
+    setTimeout(() => {
+      closeAllPanels();
+    }, 2000);
+    
+  } catch (error) {
+    console.error("❌ Erreur commande paiement à la livraison:", error);
+    showMessage("Erreur lors de la confirmation de commande", 'error');
+  }
+}
+
 // Créer une commande dans Firestore
 async function createOrder(paymentDetails, shippingAddress) {
   if (!currentUser || !db) {
@@ -827,9 +922,10 @@ async function createOrder(paymentDetails, shippingAddress) {
       totalAmount: cart.reduce((total, item) => total + (item.price * item.quantity), 0),
       paymentId: paymentDetails.id,
       payerId: paymentDetails.payer.payer_id,
-      paymentStatus: 'completed',
+      paymentStatus: paymentDetails.id.includes('cash') ? 'pending' : 'completed',
       shippingAddress: shippingAddress,
       status: 'processing',
+      paymentMethod: paymentDetails.id.includes('cash') ? 'cash' : 'paypal',
       createdAt: serverTimestamp(),
       completedAt: serverTimestamp()
     };
@@ -867,6 +963,7 @@ async function sendOrderConfirmationEmail(orderData) {
   console.log("Merci pour votre commande !");
   console.log("Montant: $", orderData.totalAmount);
   console.log("Articles: ", orderData.items.length);
+  console.log("Adresse: ", orderData.shippingAddress);
   return true;
 }
 
