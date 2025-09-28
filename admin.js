@@ -10,7 +10,7 @@ let isLoggedIn = false;
 const PRODUCT_CATEGORIES = [
     'all', 'clothing', 'shoes', 'electronics', 'home', 'sports', 'beauty',
     'bags', 'jewelry', 'accessories', 'beauty', 'home-decor', 'kitchen',
-    'toys', 'books', 'health', 'fitness', 'automotive', 'garden'
+    'toys', 'books', 'health', 'fitness', 'automotive', 'hair'
 ];
 
 // Noms affichés pour les catégories
@@ -748,4 +748,5 @@ document.addEventListener('input', function(e) {
 });
 
 console.log("✅ Admin Valy la Negra prêt !");
+
 
