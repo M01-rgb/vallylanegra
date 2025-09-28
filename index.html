@@ -126,9 +126,89 @@
             </button>
         </div>
         <div id="cartItems" class="cart-items"></div>
-        <div style="margin:1.5rem 0;">
+        
+        <!-- Formulaire d'adresse -->
+        <div id="addressForm" class="address-form">
+            <h4>Adresse de livraison</h4>
+            <div class="form-group">
+                <input type="text" id="shippingName" placeholder="Nom complet" required>
+            </div>
+            <div class="form-group">
+                <input type="text" id="shippingAddress" placeholder="Adresse complète" required>
+            </div>
+            <div class="form-group">
+                <input type="text" id="shippingCity" placeholder="Ville" required>
+            </div>
+            <div class="form-group">
+                <input type="text" id="shippingZip" placeholder="Code postal" required>
+            </div>
+            <div class="form-group">
+                <input type="tel" id="shippingPhone" placeholder="Téléphone" required>
+            </div>
+        </div>
+
+        <!-- Options de paiement -->
+        <div class="payment-options">
+            <h4>Méthode de paiement</h4>
+            <div class="payment-methods">
+                <label class="payment-method">
+                    <input type="radio" name="payment" value="paypal" checked>
+                    <i class="fab fa-paypal"></i>
+                    <span>PayPal</span>
+                </label>
+                <label class="payment-method">
+                    <input type="radio" name="payment" value="card">
+                    <i class="fas fa-credit-card"></i>
+                    <span>Carte Bancaire</span>
+                </label>
+                <label class="payment-method">
+                    <input type="radio" name="payment" value="cash">
+                    <i class="fas fa-money-bill-wave"></i>
+                    <span>Paiement à la livraison</span>
+                </label>
+            </div>
+        </div>
+
+        <!-- Section PayPal -->
+        <div id="paypal-section" class="payment-section">
             <div id="paypal-button-container"></div>
         </div>
+
+        <!-- Section Carte Bancaire -->
+        <div id="card-section" class="payment-section">
+            <div class="card-form">
+                <div class="form-group">
+                    <input type="text" id="cardNumber" placeholder="Numéro de carte" maxlength="19">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <input type="text" id="cardExpiry" placeholder="MM/AA" maxlength="5">
+                    </div>
+                    <div class="form-group">
+                        <input type="text" id="cardCvc" placeholder="CVC" maxlength="3">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <input type="text" id="cardName" placeholder="Nom sur la carte">
+                </div>
+                <button id="payWithCard" class="btn-payment">
+                    <i class="fas fa-credit-card"></i> Payer avec carte
+                </button>
+            </div>
+        </div>
+
+        <!-- Section Paiement à la livraison -->
+        <div id="cash-section" class="payment-section">
+            <div class="cash-info">
+                <i class="fas fa-money-bill-wave"></i>
+                <h4>Paiement à la livraison</h4>
+                <p>Vous payez lorsque vous recevez votre commande</p>
+                <button id="payWithCash" class="btn-payment">
+                    <i class="fas fa-check"></i> Confirmer la commande
+                </button>
+            </div>
+        </div>
+
         <div class="cart-footer">
             <div class="cart-total">
                 <strong>Total: $<span id="cartTotal">0.00</span></strong>
@@ -148,9 +228,10 @@
         <div id="lightboxDescription" class="lightbox-description"></div>
     </div>
 
-    <!-- PayPal SDK -->
-    <script src="https://www.paypal.com/sdk/js?client-id=AX4iV51P3BZMi2XMsaCvCWpHRKzVLsXSBTpCiJg16aZ62_ToUcO3Y-KLtA3v_0rM_LHfM2W7dmGbsOZF&currency=USD"></script>
+    <!-- Stripe SDK pour les cartes -->
+    <script src="https://js.stripe.com/v3/"></script>
+    <!-- PayPal SDK avec VOTRE ID client -->
+    <script src="https://www.paypal.com/sdk/js?client-id=Aboce80ZGJpGbx67DSCiX_0YMou-UNPONL7pM0MwlmLSsUFd5ctB3FDhsbmgthyd50rT-zfa7AcickSO&currency=USD"></script>
     <script type="module" src="script.js"></script>
 </body>
-
 </html>
