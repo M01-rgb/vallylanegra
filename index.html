@@ -129,7 +129,7 @@
         
         <!-- Formulaire d'adresse -->
         <div id="addressForm" class="address-form">
-            <h4>Adresse de livraison</h4>
+            <h4>📦 Adresse de livraison</h4>
             <div class="form-group">
                 <input type="text" id="shippingName" placeholder="Nom complet" required>
             </div>
@@ -149,7 +149,7 @@
 
         <!-- Options de paiement -->
         <div class="payment-options">
-            <h4>Méthode de paiement</h4>
+            <h4>💳 Méthode de paiement</h4>
             <div class="payment-methods">
                 <label class="payment-method">
                     <input type="radio" name="payment" value="paypal" checked>
@@ -175,7 +175,7 @@
         </div>
 
         <!-- Section Carte Bancaire -->
-        <div id="card-section" class="payment-section">
+        <div id="card-section" class="payment-section" style="display: none;">
             <div class="card-form">
                 <div class="form-group">
                     <input type="text" id="cardNumber" placeholder="Numéro de carte" maxlength="19">
@@ -198,7 +198,7 @@
         </div>
 
         <!-- Section Paiement à la livraison -->
-        <div id="cash-section" class="payment-section">
+        <div id="cash-section" class="payment-section" style="display: none;">
             <div class="cash-info">
                 <i class="fas fa-money-bill-wave"></i>
                 <h4>Paiement à la livraison</h4>
@@ -212,6 +212,10 @@
         <div class="cart-footer">
             <div class="cart-total">
                 <strong>Total: $<span id="cartTotal">0.00</span></strong>
+            </div>
+            <div class="security-badge">
+                <i class="fas fa-lock"></i>
+                <span>Paiement 100% sécurisé</span>
             </div>
         </div>
     </div>
@@ -230,8 +234,8 @@
 
     <!-- Stripe SDK pour les cartes -->
     <script src="https://js.stripe.com/v3/"></script>
-    <!-- PayPal SDK avec VOTRE ID client -->
-    <script src="https://www.paypal.com/sdk/js?client-id=Aboce80ZGJpGbx67DSCiX_0YMou-UNPONL7pM0MwlmLSsUFd5ctB3FDhsbmgthyd50rT-zfa7AcickSO&currency=USD"></script>
+    <!-- PayPal SDK LIVE - MODE PRODUCTION -->
+    <script src="https://www.paypal.com/sdk/js?client-id=Aboce80ZGJpGbx67DSCiX_0YMou-UNPONL7pM0MwlmLSsUFd5ctB3FDhsbmgthyd50rT-zfa7AcickSO&currency=USD&intent=capture"></script>
     <script type="module" src="script.js"></script>
 </body>
 </html>
