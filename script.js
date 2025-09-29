@@ -41,7 +41,7 @@ const SIZE_OPTIONS = {
 const COLORS = ["Blanc", "Noir", "Rouge", "Bleu", "Vert", "Jaune", "Rose", "Violet", "Orange", "Gris", "Marron", "Beige"];
 
 document.addEventListener("DOMContentLoaded", () => {
-  console.log("🚀 Valy la Negra - Démarrage...");
+  console.log("🚀 Valy la Negra - Mode LIVE Activé!");
   loadFirestoreProducts();
   loadFirestoreUsers();
   loadCart();
@@ -742,7 +742,7 @@ function renderPaypalButton(totalPrice) {
   }
 
   try {
-    console.log("💰 Initialisation PayPal avec montant:", totalPrice.toFixed(2));
+    console.log("💰 PayPal LIVE - Montant:", totalPrice.toFixed(2));
     
     window.paypal.Buttons({
       style: { 
@@ -753,7 +753,7 @@ function renderPaypalButton(totalPrice) {
       },
       
       createOrder: function(data, actions) {
-        console.log("🔄 Création de la commande PayPal...");
+        console.log("🔄 Création de la commande PayPal LIVE...");
         
         // Validation avant création de commande
         if (!validateAddressForm()) {
@@ -767,55 +767,42 @@ function renderPaypalButton(totalPrice) {
           return Promise.reject(new Error("Montant invalide"));
         }
         
+        // Structure SIMPLIFIÉE pour PayPal LIVE
         const purchaseUnit = {
           amount: {
             value: totalPrice.toFixed(2),
-            currency_code: "USD",
-            breakdown: {
-              item_total: {
-                value: totalPrice.toFixed(2),
-                currency_code: "USD"
-              }
-            }
+            currency_code: "USD"
           },
-          items: cart.map(item => ({
-            name: item.name,
-            description: `${item.size} - ${item.color}`,
-            quantity: item.quantity.toString(),
-            unit_amount: {
-              value: item.price.toFixed(2),
-              currency_code: "USD"
-            }
-          }))
+          description: "Achat Valy la Negra"
         };
         
-        console.log("📦 Données envoyées à PayPal:", purchaseUnit);
+        console.log("📦 Données envoyées à PayPal LIVE:", purchaseUnit);
         
         return actions.order.create({
           purchase_units: [purchaseUnit],
           application_context: {
-            shipping_preference: "NO_SHIPPING"
+            shipping_preference: "NO_SHIPPING",
+            user_action: "PAY_NOW"
           }
         }).then(order => {
-          console.log("✅ Commande PayPal créée:", order.id);
+          console.log("✅ Commande PayPal LIVE créée:", order.id);
           return order;
         }).catch(error => {
-          console.error("❌ Erreur création commande PayPal:", error);
-          console.error("Détails de l'erreur:", JSON.stringify(error, null, 2));
-          showMessage("Erreur lors de la création de la commande PayPal. Vérifiez vos informations.", 'error');
+          console.error("❌ Erreur création commande PayPal LIVE:", error);
+          showMessage("Erreur PayPal: " + (error.message || "Vérifiez vos informations"), 'error');
           throw error;
         });
       },
       
       onApprove: function(data, actions) {
-        console.log("✅ Commande approuvée, capture en cours...", data);
+        console.log("✅ Commande LIVE approuvée, capture en cours...", data);
         
         return actions.order.capture().then(async function(details) {
-          console.log("💰 Paiement réussi:", details);
+          console.log("💰 Paiement LIVE réussi:", details);
           
           try {
             await createOrder(details, getShippingAddress());
-            showMessage(`Paiement réussi, merci ${details.payer.name.given_name} ! 🎉`, 'success');
+            showMessage(`🎉 Paiement réussi! Merci ${details.payer.name.given_name}. Votre commande est confirmée.`, 'success');
             cart = [];
             saveCart();
             
@@ -825,24 +812,22 @@ function renderPaypalButton(totalPrice) {
             }, 2000);
             
           } catch (error) {
-            console.error("❌ Erreur création commande après paiement:", error);
+            console.error("❌ Erreur création commande après paiement LIVE:", error);
             showMessage("Paiement réussi mais erreur d'enregistrement. Contactez-nous.", 'error');
           }
         }).catch(error => {
-          console.error("❌ Erreur capture paiement PayPal:", error);
-          console.error("Détails capture:", JSON.stringify(error, null, 2));
+          console.error("❌ Erreur capture paiement PayPal LIVE:", error);
           showMessage("Erreur lors du traitement du paiement PayPal", 'error');
         });
       },
       
       onCancel: function(data) {
-        console.log("❌ Paiement annulé par l'utilisateur:", data);
+        console.log("❌ Paiement LIVE annulé par l'utilisateur:", data);
         showMessage("Paiement annulé", 'info');
       },
       
       onError: function(err) {
-        console.error("❌ Erreur PayPal:", err);
-        console.error("Détails erreur:", JSON.stringify(err, null, 2));
+        console.error("❌ Erreur PayPal LIVE:", err);
         
         let errorMessage = "Erreur lors du processus de paiement";
         
@@ -852,7 +837,7 @@ function renderPaypalButton(totalPrice) {
           } else if (err.message.includes("popup")) {
             errorMessage = "Popup PayPal bloqué. Autorisez les popups pour ce site.";
           } else if (err.message.includes("422")) {
-            errorMessage = "Erreur de données. Vérifiez les informations de votre panier.";
+            errorMessage = "Erreur de configuration PayPal. Contactez le support.";
           }
         }
         
@@ -860,7 +845,7 @@ function renderPaypalButton(totalPrice) {
       },
       
       onClick: function(data, actions) {
-        console.log("🖱️ Clic sur le bouton PayPal");
+        console.log("🖱️ Clic sur le bouton PayPal LIVE");
         
         // Validation avant ouverture de PayPal
         if (!validateAddressForm()) {
@@ -873,23 +858,16 @@ function renderPaypalButton(totalPrice) {
           return false;
         }
         
-        // Validation du montant total
-        const totalPrice = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-        if (totalPrice <= 0 || isNaN(totalPrice)) {
-          showMessage("Erreur: Montant du panier invalide", 'error');
-          return false;
-        }
-        
-        console.log("✅ Validation passée, ouverture de PayPal...");
+        console.log("✅ Validation passée, ouverture de PayPal LIVE...");
         return true;
       }
       
     }).render('#paypal-button-container').catch(error => {
-      console.error("❌ Erreur rendu bouton PayPal:", error);
+      console.error("❌ Erreur rendu bouton PayPal LIVE:", error);
       showMessage("Erreur d'initialisation du paiement", 'error');
     });
   } catch (e) {
-    console.error("❌ Erreur initialisation PayPal:", e);
+    console.error("❌ Erreur initialisation PayPal LIVE:", e);
     showMessage("Système de paiement temporairement indisponible", 'error');
   }
 }
@@ -938,7 +916,7 @@ async function processCashPayment() {
   try {
     const shippingAddress = getShippingAddress();
     await createOrder({ id: 'cash_payment_' + Date.now(), payer: { payer_id: 'cash' } }, shippingAddress);
-    showMessage("Commande confirmée ! Vous paierez à la livraison. 📦", 'success');
+    showMessage("📦 Commande confirmée ! Vous paierez à la livraison.", 'success');
     cart = [];
     saveCart();
     
@@ -977,7 +955,7 @@ async function createOrder(paymentDetails, shippingAddress) {
     };
     
     const orderRef = await addDoc(collection(db, "orders"), orderData);
-    console.log("✅ Commande créée avec ID:", orderRef.id);
+    console.log("✅ Commande LIVE créée avec ID:", orderRef.id);
     
     await sendOrderConfirmationEmail(orderData);
     
@@ -996,20 +974,21 @@ async function createOrder(paymentDetails, shippingAddress) {
     
     return orderRef.id;
   } catch (error) {
-    console.error("❌ Erreur création commande:", error);
+    console.error("❌ Erreur création commande LIVE:", error);
     throw error;
   }
 }
 
 // Fonction simulée d'envoi d'email
 async function sendOrderConfirmationEmail(orderData) {
-  console.log("=== EMAIL DE CONFIRMATION ===");
+  console.log("=== EMAIL DE CONFIRMATION LIVE ===");
   console.log("À: ", orderData.customerEmail);
   console.log("Sujet: Confirmation de commande Valy la Negra");
   console.log("Merci pour votre commande !");
   console.log("Montant: $", orderData.totalAmount);
   console.log("Articles: ", orderData.items.length);
   console.log("Adresse: ", orderData.shippingAddress);
+  console.log("=== FIN EMAIL ===");
   return true;
 }
 
@@ -1065,4 +1044,4 @@ function showMessage(message, type = 'info') {
   }, 3000);
 }
 
-console.log("✅ Script Valy la Negra prêt !");
+console.log("✅ Valy la Negra - Mode LIVE Activé !");
