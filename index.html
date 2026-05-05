@@ -3,239 +3,955 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Valy la Negra - Votre Boutique en Ligne</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>Valy la Negra - Boutique Officielle</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #f5f5f5;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            color: white;
+            padding: 15px 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .logo h1 {
+            font-size: 1.5rem;
+            background: linear-gradient(135deg, #e94560, #ff6b6b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .search-bar {
+            flex: 1;
+            max-width: 400px;
+            display: flex;
+            align-items: center;
+            background: white;
+            border-radius: 50px;
+            padding: 8px 15px;
+        }
+
+        .search-bar input {
+            flex: 1;
+            border: none;
+            outline: none;
+            padding: 8px;
+            font-size: 14px;
+        }
+
+        .search-bar i {
+            color: #666;
+            cursor: pointer;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 15px;
+        }
+
+        .header-actions button {
+            background: rgba(255,255,255,0.1);
+            border: none;
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .header-actions button:hover {
+            background: #e94560;
+            transform: scale(1.05);
+        }
+
+        .cart-btn {
+            position: relative;
+        }
+
+        .cart-count {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: #e94560;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Promo */
+        .promo-section {
+            background: linear-gradient(135deg, #e94560, #ff6b6b);
+            color: white;
+            padding: 40px 0;
+            text-align: center;
+        }
+
+        /* Categories */
+        .category-nav {
+            background: white;
+            padding: 15px 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 80px;
+            z-index: 99;
+        }
+
+        .categories {
+            display: flex;
+            gap: 15px;
+            overflow-x: auto;
+            padding: 10px 0;
+        }
+
+        .category-btn {
+            padding: 8px 20px;
+            border: none;
+            border-radius: 25px;
+            background: #f0f0f0;
+            cursor: pointer;
+            transition: all 0.3s;
+            white-space: nowrap;
+        }
+
+        .category-btn.active, .category-btn:hover {
+            background: #e94560;
+            color: white;
+        }
+
+        /* Products Grid */
+        .products-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 30px;
+            padding: 40px 0;
+        }
+
+        .product-card {
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transition: transform 0.3s;
+            cursor: pointer;
+        }
+
+        .product-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .product-image {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+        }
+
+        .product-info {
+            padding: 15px;
+        }
+
+        .product-title {
+            font-size: 1rem;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .product-price {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #e94560;
+        }
+
+        .add-to-cart {
+            width: 100%;
+            padding: 10px;
+            background: #1a1a2e;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: all 0.3s;
+        }
+
+        .add-to-cart:hover {
+            background: #e94560;
+        }
+
+        /* Cart Sidebar */
+        .cart-sidebar {
+            position: fixed;
+            right: -450px;
+            top: 0;
+            width: 450px;
+            height: 100vh;
+            background: white;
+            box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            z-index: 1000;
+            transition: right 0.3s;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        .cart-sidebar.open {
+            right: 0;
+        }
+
+        .cart-header {
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .cart-items {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .cart-item {
+            display: flex;
+            gap: 15px;
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .cart-item img {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+
+        .cart-item-details {
+            flex: 1;
+        }
+
+        .cart-item-title {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .cart-item-price {
+            color: #e94560;
+            font-weight: bold;
+        }
+
+        .cart-item-quantity {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 5px;
+        }
+
+        .cart-item-quantity button {
+            width: 25px;
+            height: 25px;
+            border: none;
+            background: #f0f0f0;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .address-form, .payment-options {
+            padding: 20px;
+            border-top: 1px solid #eee;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .payment-methods {
+            display: flex;
+            gap: 15px;
+            margin-top: 10px;
+        }
+
+        .payment-method {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .payment-method.selected {
+            border-color: #e94560;
+            background: #fff0f3;
+        }
+
+        .payment-section {
+            padding: 20px;
+            border-top: 1px solid #eee;
+        }
+
+        .btn-payment {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #e94560, #ff6b6b);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-payment:hover {
+            transform: scale(1.02);
+        }
+
+        .cart-footer {
+            padding: 20px;
+            border-top: 1px solid #eee;
+            background: #f9f9f9;
+        }
+
+        .cart-total {
+            font-size: 1.3rem;
+            text-align: right;
+            margin-bottom: 10px;
+        }
+
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+            display: none;
+        }
+
+        .overlay.active {
+            display: block;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            max-width: 400px;
+            width: 90%;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            padding: 10px;
+        }
+
+        .input-group i {
+            color: #999;
+        }
+
+        .input-group input {
+            flex: 1;
+            border: none;
+            outline: none;
+        }
+
+        .notification {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #4caf50;
+            color: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            z-index: 2001;
+            display: none;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .no-products {
+            text-align: center;
+            padding: 60px;
+            color: #999;
+        }
+
+        @media (max-width: 768px) {
+            .cart-sidebar {
+                width: 100%;
+            }
+            .products-grid {
+                grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+                gap: 15px;
+            }
+        }
+    </style>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <!-- Firebase SDK -->
-    <script type="module">
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
-      import { getFirestore } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
-      import { getStorage } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-storage.js";
-      
-      window.firebaseConfig = {
-        apiKey: "AIzaSyAG0n1uwFULiy3x00OXHsFUQCetRGhjTjU",
-        authDomain: "valy-3c8d8.firebaseapp.com",
-        projectId: "valy-3c8d8",
-        storageBucket: "valy-3c8d8.firebasestorage.app",
-        messagingSenderId: "231448443924",
-        appId: "1:231448443924:web:366b608f77368cd720fb01"
-      };
-      
-      window.firebaseApp = initializeApp(window.firebaseConfig);
-      window.firebaseDB = getFirestore(window.firebaseApp);
-      window.firebaseStorage = getStorage(window.firebaseApp);
-    </script>
 </head>
 <body>
-    <!-- Modal d'inscription -->
-    <div id="registrationModal" class="modal">
-        <div class="modal-content">
-            <h2>Bienvenue sur Valy la Negra! 🛍️</h2>
-            <p>Pour accéder à notre boutique, veuillez entrer vos informations</p>
-            <form id="registrationForm">
-                <div class="input-group">
+
+<!-- Modal d'inscription -->
+<div id="registrationModal" class="modal active">
+    <div class="modal-content">
+        <h2 style="margin-bottom: 20px;">Bienvenue sur Valy la Negra! 🛍️</h2>
+        <p style="margin-bottom: 20px;">Pour accéder à notre boutique, veuillez entrer vos informations</p>
+        <form id="registrationForm">
+            <div class="input-group">
+                <i class="fas fa-user"></i>
+                <input type="text" id="userName" placeholder="Votre nom complet" required>
+            </div>
+            <div class="input-group">
+                <i class="fas fa-envelope"></i>
+                <input type="email" id="userEmail" placeholder="votre@email.com" required>
+            </div>
+            <div class="input-group">
+                <i class="fas fa-phone"></i>
+                <input type="tel" id="userPhone" placeholder="Numéro de téléphone" required>
+            </div>
+            <button type="submit" style="width:100%; padding:12px; background:#e94560; color:white; border:none; border-radius:10px; font-size:16px; cursor:pointer;">Accéder à Valy la Negra</button>
+        </form>
+    </div>
+</div>
+
+<!-- Header -->
+<header class="header">
+    <div class="container">
+        <div class="header-content">
+            <div class="logo">
+                <h1>Valy la Negra</h1>
+            </div>
+            <div class="search-bar">
+                <i class="fas fa-search"></i>
+                <input type="text" id="searchInput" placeholder="Rechercher des produits...">
+            </div>
+            <div class="header-actions">
+                <button id="profileBtn">
                     <i class="fas fa-user"></i>
-                    <input type="text" id="userName" placeholder="Votre nom complet" required>
-                </div>
-                <div class="input-group">
-                    <i class="fas fa-envelope"></i>
-                    <input type="email" id="userEmail" placeholder="votre@email.com" required>
-                </div>
-                <div class="input-group">
-                    <i class="fas fa-phone"></i>
-                    <input type="tel" id="userPhone" placeholder="Numéro de téléphone" pattern="[0-9 +]+" required>
-                </div>
-                <button type="submit">Accéder à Valy la Negra</button>
-            </form>
-        </div>
-    </div>
-
-    <!-- Header -->
-    <header class="header">
-        <div class="container">
-            <div class="header-content">
-                <div class="logo user-logo" style="cursor:pointer;">
-                    <h1 id="userNameDisplay">Valy la Negra</h1>
-                </div>
-                <div class="search-bar">
-                    <i class="fas fa-search" id="searchIcon"></i>
-                    <input type="text" id="searchInput" placeholder="Rechercher des produits...">
-                    <i class="fas fa-times clear-search" id="clearSearch" style="display: none; cursor: pointer;"></i>
-                </div>
-                <div class="header-actions">
-                    <button class="share-btn" id="shareBtn">
-                        <i class="fas fa-share-alt"></i>
-                    </button>
-                    <button class="user-btn" id="profileBtn">
-                        <i class="fas fa-user"></i>
-                    </button>
-                    <button class="cart-btn" onclick="toggleCart()">
-                        <i class="fas fa-shopping-cart"></i>
-                        <span id="cartCount" class="cart-count">0</span>
-                    </button>
-                </div>
-            </div>
-        </div>
-    </header>
-
-    <!-- Section Promo -->
-    <section class="promo-section">
-        <div class="container">
-            <div class="promo-banner">
-                <h2>🔥 Offres Spéciales Valy la Negra</h2>
-                <p>Jusqu'à 70% de réduction sur une sélection de produits</p>
-            </div>
-        </div>
-    </section>
-
-    <!-- Navigation Catégories -->
-    <nav class="category-nav">
-        <div class="container">
-            <div class="categories">
-                <button class="category-btn active" data-category="all">Tous</button>
-                <button class="category-btn" data-category="clothing">Vêtements</button>
-                <button class="category-btn" data-category="shoes">Chaussures</button>
-                <button class="category-btn" data-category="electronics">Électronique</button>
-                <button class="category-btn" data-category="home">Maison</button>
-                <button class="category-btn" data-category="sports">Sports</button>
-                <button class="category-btn" data-category="beauty">Beauté</button> 
-                <button class="category-btn" data-category="hair">Cheveux</button> 
-            </div>
-        </div>
-    </nav>
-
-    <!-- Grille de Produits -->
-    <main class="main-content">
-        <div class="container">
-            <div id="productsGrid" class="products-grid">
-                <div class="no-products">
-                    <h3>Aucun produit disponible</h3>
-                    <p>Les produits seront affichés ici une fois ajoutés par l'administrateur.</p>
-                </div>
-            </div>
-        </div>
-    </main>
-
-    <!-- Panier Sidebar -->
-    <div id="cartSidebar" class="cart-sidebar">
-        <div class="cart-header">
-            <h3>Mon Panier</h3>
-            <button onclick="toggleCart()" class="close-btn">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        <div id="cartItems" class="cart-items"></div>
-        
-        <!-- Formulaire d'adresse -->
-        <div id="addressForm" class="address-form">
-            <h4>📦 Adresse de livraison</h4>
-            <div class="form-group">
-                <input type="text" id="shippingName" placeholder="Nom complet" required>
-            </div>
-            <div class="form-group">
-                <input type="text" id="shippingAddress" placeholder="Adresse complète" required>
-            </div>
-            <div class="form-group">
-                <input type="text" id="shippingCity" placeholder="Ville" required>
-            </div>
-            <div class="form-group">
-                <input type="text" id="shippingZip" placeholder="Code postal" required>
-            </div>
-            <div class="form-group">
-                <input type="tel" id="shippingPhone" placeholder="Téléphone" required>
-            </div>
-        </div>
-
-        <!-- Options de paiement -->
-        <div class="payment-options">
-            <h4>💳 Méthode de paiement</h4>
-            <div class="payment-methods">
-                <label class="payment-method">
-                    <input type="radio" name="payment" value="paypal" checked>
-                    <i class="fab fa-paypal"></i>
-                    <span>PayPal</span>
-                </label>
-                <label class="payment-method">
-                    <input type="radio" name="payment" value="card">
-                    <i class="fas fa-credit-card"></i>
-                    <span>Carte Bancaire</span>
-                </label>
-                <label class="payment-method">
-                    <input type="radio" name="payment" value="cash">
-                    <i class="fas fa-money-bill-wave"></i>
-                    <span>Paiement à la livraison</span>
-                </label>
-            </div>
-        </div>
-
-        <!-- Section PayPal -->
-        <div id="paypal-section" class="payment-section">
-            <div id="paypal-button-container"></div>
-        </div>
-
-        <!-- Section Carte Bancaire -->
-        <div id="card-section" class="payment-section" style="display: none;">
-            <div class="card-form">
-                <div class="form-group">
-                    <input type="text" id="cardNumber" placeholder="Numéro de carte" maxlength="19">
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <input type="text" id="cardExpiry" placeholder="MM/AA" maxlength="5">
-                    </div>
-                    <div class="form-group">
-                        <input type="text" id="cardCvc" placeholder="CVC" maxlength="3">
-                    </div>
-                </div>
-                <div class="form-group">
-                    <input type="text" id="cardName" placeholder="Nom sur la carte">
-                </div>
-                <button id="payWithCard" class="btn-payment">
-                    <i class="fas fa-credit-card"></i> Payer avec carte
+                </button>
+                <button class="cart-btn" onclick="toggleCart()">
+                    <i class="fas fa-shopping-cart"></i>
+                    <span id="cartCount" class="cart-count">0</span>
                 </button>
             </div>
         </div>
+    </div>
+</header>
 
-        <!-- Section Paiement à la livraison -->
-        <div id="cash-section" class="payment-section" style="display: none;">
-            <div class="cash-info">
-                <i class="fas fa-money-bill-wave"></i>
-                <h4>Paiement à la livraison</h4>
-                <p>Vous payez lorsque vous recevez votre commande</p>
-                <button id="payWithCash" class="btn-payment">
-                    <i class="fas fa-check"></i> Confirmer la commande
-                </button>
-            </div>
-        </div>
+<!-- Promo -->
+<section class="promo-section">
+    <div class="container">
+        <h2>🔥 Offres Spéciales Valy la Negra</h2>
+        <p>Jusqu'à 70% de réduction sur une sélection de produits</p>
+    </div>
+</section>
 
-        <div class="cart-footer">
-            <div class="cart-total">
-                <strong>Total: $<span id="cartTotal">0.00</span></strong>
-            </div>
-            <div class="security-badge">
-                <i class="fas fa-lock"></i>
-                <span>Paiement 100% sécurisé</span>
-            </div>
+<!-- Categories -->
+<nav class="category-nav">
+    <div class="container">
+        <div class="categories">
+            <button class="category-btn active" data-category="all">Tous</button>
+            <button class="category-btn" data-category="clothing">Vêtements</button>
+            <button class="category-btn" data-category="shoes">Chaussures</button>
+            <button class="category-btn" data-category="electronics">Électronique</button>
+            <button class="category-btn" data-category="home">Maison</button>
         </div>
     </div>
+</nav>
 
-    <!-- Overlay -->
-    <div id="overlay" class="overlay"></div>
+<!-- Products -->
+<main class="main-content">
+    <div class="container">
+        <div id="productsGrid" class="products-grid"></div>
+    </div>
+</main>
+
+<!-- Cart Sidebar -->
+<div id="cartSidebar" class="cart-sidebar">
+    <div class="cart-header">
+        <h3>Mon Panier</h3>
+        <button onclick="toggleCart()" style="background:none; border:none; font-size:24px; cursor:pointer;">&times;</button>
+    </div>
+    <div id="cartItems" class="cart-items"></div>
     
-    <!-- Lightbox pour les images de produits -->
-    <div id="productLightbox" class="lightbox">
-        <span class="close">&times;</span>
-        <span class="arrow prev">&#10094;</span>
-        <span class="arrow next">&#10095;</span>
-        <img class="lightbox-content" id="lightboxImage">
-        <div id="lightboxDescription" class="lightbox-description"></div>
+    <div class="address-form">
+        <h4 style="margin-bottom:15px;">📦 Adresse de livraison</h4>
+        <div class="form-group">
+            <input type="text" id="shippingName" placeholder="Nom complet">
+        </div>
+        <div class="form-group">
+            <input type="text" id="shippingAddress" placeholder="Adresse complète">
+        </div>
+        <div class="form-group">
+            <input type="text" id="shippingCity" placeholder="Ville">
+        </div>
+        <div class="form-group">
+            <input type="text" id="shippingZip" placeholder="Code postal">
+        </div>
+        <div class="form-group">
+            <input type="tel" id="shippingPhone" placeholder="Téléphone">
+        </div>
     </div>
 
-    <!-- Stripe SDK pour les cartes -->
-    <script src="https://js.stripe.com/v3/"></script>
-    <!-- PayPal SDK LIVE avec votre NOUVEAU Client ID -->
-    <script src="https://www.paypal.com/sdk/js?client-id=AbwMkMBOX07ZL9hNJiITKqY26Jek-00_QIqwk-Aeo1fLYj7ZhsZgML_1Z2Oh7Q0JyYD7nwHHo2cDSu19&currency=USD&intent=capture"></script>
-    <script type="module" src="script.js"></script>
+    <div class="payment-options">
+        <h4 style="margin-bottom:15px;">💳 Méthode de paiement</h4>
+        <div class="payment-methods">
+            <div class="payment-method selected" data-payment="paypal">
+                <i class="fab fa-paypal" style="font-size:24px; color:#0070ba;"></i>
+                <span>PayPal</span>
+            </div>
+            <div class="payment-method" data-payment="card">
+                <i class="fas fa-credit-card" style="font-size:24px;"></i>
+                <span>Carte Bancaire</span>
+            </div>
+            <div class="payment-method" data-payment="cash">
+                <i class="fas fa-money-bill-wave" style="font-size:24px;"></i>
+                <span>Paiement à la livraison</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="paypal-section" class="payment-section">
+        <div id="paypal-button-container"></div>
+    </div>
+
+    <div id="card-section" class="payment-section" style="display:none;">
+        <div class="form-group">
+            <input type="text" id="cardNumber" placeholder="Numéro de carte" maxlength="19">
+        </div>
+        <div class="form-group">
+            <input type="text" id="cardExpiry" placeholder="MM/AA" maxlength="5">
+        </div>
+        <div class="form-group">
+            <input type="text" id="cardCvc" placeholder="CVC" maxlength="3">
+        </div>
+        <div class="form-group">
+            <input type="text" id="cardName" placeholder="Nom sur la carte">
+        </div>
+        <button id="payWithCardBtn" class="btn-payment">
+            <i class="fas fa-credit-card"></i> Payer avec carte
+        </button>
+    </div>
+
+    <div id="cash-section" class="payment-section" style="display:none;">
+        <button id="confirmCashBtn" class="btn-payment">
+            <i class="fas fa-check"></i> Confirmer la commande
+        </button>
+    </div>
+
+    <div class="cart-footer">
+        <div class="cart-total">
+            <strong>Total: <span id="cartTotal">0.00</span> €</strong>
+        </div>
+        <div class="security-badge" style="text-align:center; font-size:12px; color:#999;">
+            <i class="fas fa-lock"></i> Paiement 100% sécurisé
+        </div>
+    </div>
+</div>
+
+<div id="overlay" class="overlay"></div>
+<div id="notification" class="notification"></div>
+
+<!-- PayPal SDK -->
+<script src="https://www.paypal.com/sdk/js?client-id=AbwMkMBOX07ZL9hNJiITKqY26Jek-00_QIqwk-Aeo1fLYj7ZhsZgML_1Z2Oh7Q0JyYD7nwHHo2cDSu19&currency=EUR&intent=capture"></script>
+
+<script>
+    // Produits
+    const products = [
+        { id: 1, name: "Robe élégante", price: 49.99, category: "clothing", image: "https://picsum.photos/id/20/300/300", description: "Robe longue en soie" },
+        { id: 2, name: "Jean slim", price: 59.99, category: "clothing", image: "https://picsum.photos/id/21/300/300", description: "Jean confortable" },
+        { id: 3, name: "Baskets Nike", price: 89.99, category: "shoes", image: "https://picsum.photos/id/22/300/300", description: "Baskets sport" },
+        { id: 4, name: "iPhone 13", price: 699.99, category: "electronics", image: "https://picsum.photos/id/23/300/300", description: "Smartphone Apple" },
+        { id: 5, name: "Lampe design", price: 39.99, category: "home", image: "https://picsum.photos/id/24/300/300", description: "Lampe LED" },
+        { id: 6, name: "Sac à main", price: 79.99, category: "clothing", image: "https://picsum.photos/id/25/300/300", description: "Sac cuir" }
+    ];
+
+    let cart = JSON.parse(localStorage.getItem('cart')) || [];
+    let currentUser = null;
+    let currentPaymentMethod = 'paypal';
+
+    // Fonctions utilitaires
+    function showNotification(message, isError = false) {
+        const notif = document.getElementById('notification');
+        notif.textContent = message;
+        notif.style.backgroundColor = isError ? '#f44336' : '#4caf50';
+        notif.style.display = 'block';
+        setTimeout(() => {
+            notif.style.display = 'none';
+        }, 3000);
+    }
+
+    function validateAddress() {
+        const name = document.getElementById('shippingName').value.trim();
+        const address = document.getElementById('shippingAddress').value.trim();
+        const city = document.getElementById('shippingCity').value.trim();
+        const zip = document.getElementById('shippingZip').value.trim();
+        const phone = document.getElementById('shippingPhone').value.trim();
+        
+        if (!name || !address || !city || !zip || !phone) {
+            showNotification("Veuillez remplir toutes les informations de livraison", true);
+            return false;
+        }
+        return { name, address, city, zip, phone };
+    }
+
+    function getTotal() {
+        return cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    }
+
+    function updateCartUI() {
+        const cartItemsDiv = document.getElementById('cartItems');
+        const cartCountSpan = document.getElementById('cartCount');
+        const cartTotalSpan = document.getElementById('cartTotal');
+        
+        cartCountSpan.textContent = cart.reduce((sum, item) => sum + item.quantity, 0);
+        cartTotalSpan.textContent = getTotal().toFixed(2);
+        
+        if (cart.length === 0) {
+            cartItemsDiv.innerHTML = '<p style="text-align:center; color:#999;">Votre panier est vide</p>';
+            return;
+        }
+        
+        cartItemsDiv.innerHTML = cart.map(item => `
+            <div class="cart-item">
+                <img src="${item.image}" alt="${item.name}">
+                <div class="cart-item-details">
+                    <div class="cart-item-title">${item.name}</div>
+                    <div class="cart-item-price">${item.price} €</div>
+                    <div class="cart-item-quantity">
+                        <button onclick="updateQuantity(${item.id}, -1)">-</button>
+                        <span>${item.quantity}</span>
+                        <button onclick="updateQuantity(${item.id}, 1)">+</button>
+                        <button onclick="removeFromCart(${item.id})" style="background:#ff4444; color:white;">×</button>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+        
+        localStorage.setItem('cart', JSON.stringify(cart));
+        
+        // Recharger PayPal si nécessaire
+        if (currentPaymentMethod === 'paypal' && getTotal() > 0) {
+            loadPayPalButton();
+        }
+    }
+    
+    function updateQuantity(id, delta) {
+        const item = cart.find(i => i.id === id);
+        if (item) {
+            item.quantity += delta;
+            if (item.quantity <= 0) {
+                cart = cart.filter(i => i.id !== id);
+            }
+            updateCartUI();
+        }
+    }
+    
+    function removeFromCart(id) {
+        cart = cart.filter(i => i.id !== id);
+        updateCartUI();
+    }
+    
+    function addToCart(product) {
+        const existing = cart.find(i => i.id === product.id);
+        if (existing) {
+            existing.quantity++;
+        } else {
+            cart.push({ ...product, quantity: 1 });
+        }
+        updateCartUI();
+        showNotification(`${product.name} ajouté au panier !`);
+    }
+    
+    function toggleCart() {
+        const sidebar = document.getElementById('cartSidebar');
+        const overlay = document.getElementById('overlay');
+        sidebar.classList.toggle('open');
+        overlay.classList.toggle('active');
+        
+        if (sidebar.classList.contains('open') && currentPaymentMethod === 'paypal' && getTotal() > 0) {
+            setTimeout(() => loadPayPalButton(), 100);
+        }
+    }
+    
+    function loadPayPalButton() {
+        const container = document.getElementById('paypal-button-container');
+        container.innerHTML = '';
+        
+        if (getTotal() <= 0) return;
+        
+        paypal.Buttons({
+            createOrder: function(data, actions) {
+                const address = validateAddress();
+                if (!address) return Promise.reject();
+                return actions.order.create({
+                    purchase_units: [{
+                        amount: {
+                            value: getTotal().toFixed(2),
+                            currency_code: "EUR"
+                        },
+                        description: "Commande Valy la Negra"
+                    }]
+                });
+            },
+            onApprove: function(data, actions) {
+                return actions.order.capture().then(function(details) {
+                    processOrder('paypal', details.id);
+                });
+            },
+            onError: function(err) {
+                showNotification("Erreur PayPal: " + err.message, true);
+            }
+        }).render('#paypal-button-container');
+    }
+    
+    function processOrder(paymentMethod, transactionId = null) {
+        const address = validateAddress();
+        if (!address) return;
+        
+        const order = {
+            id: Date.now(),
+            user: currentUser,
+            items: [...cart],
+            total: getTotal(),
+            address: address,
+            paymentMethod: paymentMethod,
+            transactionId: transactionId,
+            date: new Date().toISOString()
+        };
+        
+        // Sauvegarder la commande
+        const orders = JSON.parse(localStorage.getItem('orders') || '[]');
+        orders.push(order);
+        localStorage.setItem('orders', JSON.stringify(orders));
+        
+        // Vider le panier
+        cart = [];
+        updateCartUI();
+        
+        // Fermer le panier
+        toggleCart();
+        
+        showNotification(`Commande confirmée ! Montant: ${order.total}€. ${paymentMethod === 'cash' ? 'Vous paierez à la livraison.' : 'Merci pour votre achat !'}`);
+        
+        setTimeout(() => {
+            alert(`✅ Commande validée !\n\nTotal: ${order.total}€\nMéthode: ${paymentMethod === 'paypal' ? 'PayPal' : paymentMethod === 'card' ? 'Carte bancaire' : 'Paiement à la livraison'}\nLivraison: ${address.address}, ${address.city}\n\nMerci pour votre confiance !`);
+        }, 500);
+    }
+    
+    // Affichage des produits
+    function displayProducts(category = 'all') {
+        const grid = document.getElementById('productsGrid');
+        const filtered = category === 'all' ? products : products.filter(p => p.category === category);
+        
+        if (filtered.length === 0) {
+            grid.innerHTML = '<div class="no-products"><h3>Aucun produit dans cette catégorie</h3></div>';
+            return;
+        }
+        
+        grid.innerHTML = filtered.map(product => `
+            <div class="product-card">
+                <img src="${product.image}" class="product-image" alt="${product.name}">
+                <div class="product-info">
+                    <h3 class="product-title">${product.name}</h3>
+                    <p style="color:#666; font-size:12px; margin:5px 0;">${product.description}</p>
+                    <div class="product-price">${product.price} €</div>
+                    <button class="add-to-cart" onclick="addToCart(${JSON.stringify(product).replace(/"/g, '&quot;')})">
+                        <i class="fas fa-cart-plus"></i> Ajouter au panier
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    }
+    
+    // Gestion des catégories
+    document.querySelectorAll('.category-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            displayProducts(btn.dataset.category);
+        });
+    });
+    
+    // Recherche
+    document.getElementById('searchInput').addEventListener('input', (e) => {
+        const searchTerm = e.target.value.toLowerCase();
+        const filtered = products.filter(p => p.name.toLowerCase().includes(searchTerm));
+        const grid = document.getElementById('productsGrid');
+        
+        if (filtered.length === 0) {
+            grid.innerHTML = '<div class="no-products"><h3>Aucun produit trouvé</h3></div>';
+        } else {
+            grid.innerHTML = filtered.map(product => `
+                <div class="product-card">
+                    <img src="${product.image}" class="product-image">
+                    <div class="product-info">
+                        <h3>${product.name}</h3>
+                        <div class="product-price">${product.price} €</div>
+                        <button class="add-to-cart" onclick="addToCart(${JSON.stringify(product).replace(/"/g, '&quot;')})">Ajouter</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+    });
+    
+    // Gestion des méthodes de paiement
+    document.querySelectorAll('.payment-method').forEach(method => {
+        method.addEventListener('click', () => {
+            document.querySelectorAll('.payment-method').forEach(m => m.classList.remove('selected'));
+            method.classList.add('selected');
+            currentPaymentMethod = method.dataset.payment;
+            
+            document.getElementById('paypal-section').style.display = currentPaymentMethod === 'paypal' ? 'block' : 'none';
+            document.getElementById('card-section').style.display = currentPaymentMethod === 'card' ? 'block' : 'none';
+            document.getElementById('cash-section').style.display = currentPaymentMethod === 'cash' ? 'block' : 'none';
+            
+            if (currentPaymentMethod === 'paypal' && getTotal() > 0) {
+                loadPayPalButton();
+            }
+        });
+    });
+    
+    // Paiement par carte
+    document.getElementById('payWithCardBtn').addEventListener('click', () => {
+        const cardNumber = document.getElementById('cardNumber').value;
+        const cardExpiry = document.getElementById('cardExpiry').value;
+        const cardCvc = document.getElementById('cardCvc').value;
+        const cardName = document.getElementById('cardName').value;
+        
+        if (!cardNumber || !cardExpiry || !cardCvc || !cardName) {
+            showNotification("Veuillez remplir toutes les informations de carte", true);
+            return;
+        }
+        
+        // Validation simple du numéro de carte
+        if (cardNumber.replace(/\s/g, '').length < 15) {
+            showNotification("Numéro de carte invalide", true);
+            return;
+        }
+        
+        processOrder('card', 'card_' + Date.now());
+    });
+    
+    // Paiement à la livraison
+    document.getElementById('confirmCashBtn').addEventListener('click', () => {
+        processOrder('cash');
+    });
+    
+    // Inscription
+    document.getElementById('registrationForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const name = document.getElementById('userName').value;
+        const email = document.getElementById('userEmail').value;
+        const phone = document.getElementById('userPhone').value;
+        
+        currentUser = { name, email, phone };
+        localStorage.setItem('user', JSON.stringify(currentUser));
+        
+        document.getElementById('registrationModal').classList.remove('active');
+        document.getElementById('userNameDisplay').textContent = `Bonjour ${name.split(' ')[0]} 👋`;
+        showNotification(`Bienvenue ${name} !`);
+        
+        displayProducts();
+    });
+    
+    // Profil
+    document.getElementById('profileBtn').addEventListener('click', () => {
+        if (currentUser) {
+            alert(`👤 ${currentUser.name}\n📧 ${currentUser.email}\n📞 ${currentUser.phone}`);
+        } else {
+            document.getElementById('registrationModal').classList.add('active');
+        }
+    });
+    
+    // Overlay click
+    document.getElementById('overlay').addEventListener('click', toggleCart);
+    
+    // Initialisation
+    if (localStorage.getItem('user')) {
+        currentUser = JSON.parse(localStorage.getItem('user'));
+        document.getElementById('registrationModal').classList.remove('active');
+        document.getElementById('userNameDisplay').textContent = `Bonjour ${currentUser.name.split(' ')[0]} 👋`;
+    }
+    
+    displayProducts();
+    updateCartUI();
+</script>
 </body>
 </html>
