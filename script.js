@@ -51,7 +51,6 @@ document.addEventListener("DOMContentLoaded", () => {
   setupLightbox();
   setupPaymentMethods();
   setupCardPaymentListener();
-  setupCashPaymentListener();
   window.toggleCart = toggleCart;
   window.updateQuantity = updateQuantity;
   window.removeFromCart = removeFromCart;
@@ -78,13 +77,10 @@ function loadFirestoreProducts() {
       id: doc.id
     }));
     
-    // Mélanger aléatoirement les produits
     products = shuffleArray([...allProducts]);
     filteredProducts = [...products];
     
     console.log(`✅ ${products.length} produits chargés depuis Firestore`);
-    
-    // Appliquer les filtres actuels
     applyFilters();
   }, (error) => {
     console.error("❌ Erreur chargement produits:", error);
@@ -246,7 +242,6 @@ function setupEventListeners() {
     });
   }
   
-  // Recherche de produits
   const searchInput = document.getElementById("searchInput");
   const clearSearch = document.getElementById("clearSearch");
   const searchIcon = document.getElementById("searchIcon");
@@ -287,7 +282,6 @@ function setupPaymentMethods() {
   const paymentRadios = document.querySelectorAll('input[name="payment"]');
   const paypalSection = document.getElementById('paypal-section');
   const cardSection = document.getElementById('card-section');
-  const cashSection = document.getElementById('cash-section');
   
   paymentRadios.forEach(radio => {
     radio.addEventListener('change', function() {
@@ -295,7 +289,6 @@ function setupPaymentMethods() {
       
       if (paypalSection) paypalSection.style.display = 'none';
       if (cardSection) cardSection.style.display = 'none';
-      if (cashSection) cashSection.style.display = 'none';
       
       if (this.value === 'paypal' && paypalSection) {
         paypalSection.style.display = 'block';
@@ -305,8 +298,6 @@ function setupPaymentMethods() {
         }
       } else if (this.value === 'card' && cardSection) {
         cardSection.style.display = 'block';
-      } else if (this.value === 'cash' && cashSection) {
-        cashSection.style.display = 'block';
       }
     });
   });
@@ -319,27 +310,15 @@ function setupCardPaymentListener() {
   }
 }
 
-function setupCashPaymentListener() {
-  const payWithCashBtn = document.getElementById('payWithCash');
-  if (payWithCashBtn) {
-    payWithCashBtn.addEventListener('click', processCashPayment);
-  }
-}
-
 function applyFilters() {
   console.log("🔍 Application des filtres...");
-  console.log("Produits disponibles:", products.length);
-  console.log("Catégorie:", currentCategory);
-  console.log("Recherche:", searchTerm);
   
-  // Filtrer d'abord par catégorie
   if (currentCategory === 'all') {
     filteredProducts = [...products];
   } else {
     filteredProducts = products.filter(product => product.category === currentCategory);
   }
   
-  // Puis filtrer par terme de recherche
   if (searchTerm) {
     filteredProducts = filteredProducts.filter(product => 
       product.name.toLowerCase().includes(searchTerm) ||
@@ -429,7 +408,6 @@ async function registerUser(name, email, phone) {
     currentUser = newUser;
     saveCart();
     displayUserName();
-    
     await syncCartToFirestore();
     
     const modal = document.getElementById("registrationModal");
@@ -644,6 +622,8 @@ function updateCartUI() {
   const cartCount = document.getElementById("cartCount");
   const cartItems = document.getElementById("cartItems");
   const cartTotal = document.getElementById("cartTotal");
+  const addressForm = document.getElementById("addressForm");
+  const paymentOptions = document.querySelector(".payment-options");
 
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
   const totalPrice = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -660,19 +640,8 @@ function updateCartUI() {
         <p>Votre panier est vide</p>
       </div>
     `;
-    
-    const addressForm = document.getElementById("addressForm");
-    const paymentOptions = document.querySelector(".payment-options");
-    const paypalSection = document.getElementById("paypal-section");
-    const cardSection = document.getElementById("card-section");
-    const cashSection = document.getElementById("cash-section");
-    
     if (addressForm) addressForm.style.display = 'none';
     if (paymentOptions) paymentOptions.style.display = 'none';
-    if (paypalSection) paypalSection.style.display = 'none';
-    if (cardSection) cardSection.style.display = 'none';
-    if (cashSection) cashSection.style.display = 'none';
-    
   } else {
     cartItems.innerHTML = `
       <div class="cart-items-list">
@@ -699,24 +668,11 @@ function updateCartUI() {
       </div>
     `;
     
-    const addressForm = document.getElementById("addressForm");
-    const paymentOptions = document.querySelector(".payment-options");
-    const paypalSection = document.getElementById("paypal-section");
-    
     if (addressForm) addressForm.style.display = 'block';
     if (paymentOptions) paymentOptions.style.display = 'block';
     
-    if (currentPaymentMethod === 'paypal' && paypalSection) {
-      paypalSection.style.display = 'block';
-      if (totalPrice > 0) {
-        setTimeout(() => renderPaypalButton(totalPrice), 300);
-      }
-    } else if (currentPaymentMethod === 'card') {
-      const cardSection = document.getElementById("card-section");
-      if (cardSection) cardSection.style.display = 'block';
-    } else if (currentPaymentMethod === 'cash') {
-      const cashSection = document.getElementById("cash-section");
-      if (cashSection) cashSection.style.display = 'block';
+    if (currentPaymentMethod === 'paypal' && totalPrice > 0) {
+      setTimeout(() => renderPaypalButton(totalPrice), 300);
     }
   }
 }
@@ -908,27 +864,6 @@ function processCardPayment() {
   }, 1500);
 }
 
-async function processCashPayment() {
-  if (!validateAddressForm()) return;
-  
-  showMessage("📦 Confirmation de votre commande...", 'info');
-  
-  try {
-    const paymentDetails = {
-      id: 'cash_' + Date.now(),
-      payer: { payer_id: 'cash_payment' }
-    };
-    await createOrder(paymentDetails, getShippingAddress());
-    showMessage("📦 Commande confirmée ! Vous paierez à la livraison.", 'success');
-    cart = [];
-    saveCart();
-    setTimeout(() => closeAllPanels(), 2000);
-  } catch (error) {
-    console.error("❌ Erreur commande:", error);
-    showMessage("Erreur lors de la confirmation de commande", 'error');
-  }
-}
-
 async function createOrder(paymentDetails, shippingAddress) {
   if (!currentUser || !currentUser.id || !db) {
     throw new Error("Utilisateur non connecté ou base de données indisponible");
@@ -952,10 +887,10 @@ async function createOrder(paymentDetails, shippingAddress) {
       totalAmount: cart.reduce((total, item) => total + (item.price * item.quantity), 0),
       paymentId: paymentDetails.id,
       payerId: paymentDetails.payer.payer_id,
-      paymentStatus: paymentDetails.id.includes('cash') ? 'pending' : 'completed',
+      paymentStatus: 'completed',
       shippingAddress: shippingAddress.full,
       status: 'processing',
-      paymentMethod: paymentDetails.id.includes('cash') ? 'cash' : (paymentDetails.id.includes('card') ? 'card' : 'paypal'),
+      paymentMethod: paymentDetails.id.includes('card') ? 'card' : 'paypal',
       createdAt: serverTimestamp(),
       completedAt: serverTimestamp()
     };
