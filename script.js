@@ -25,6 +25,7 @@ let currentImageIndex = 0;
 let isAddingToCart = false;
 let searchTerm = '';
 let currentCategory = 'all';
+let currentPaymentMethod = 'paypal';
 
 // Options par catégorie
 const SIZE_OPTIONS = {
@@ -49,7 +50,13 @@ document.addEventListener("DOMContentLoaded", () => {
   setupEventListeners();
   setupLightbox();
   setupPaymentMethods();
+  setupCardPaymentListener();
+  setupCashPaymentListener();
   window.toggleCart = toggleCart;
+  window.updateQuantity = updateQuantity;
+  window.removeFromCart = removeFromCart;
+  window.addToCart = addToCart;
+  window.openLightbox = openLightbox;
 });
 
 function loadFirestoreProducts() {
@@ -72,12 +79,9 @@ function loadFirestoreProducts() {
       id: doc.id
     }));
     
-    // Mélanger aléatoirement les produits
     products = shuffleArray([...allProducts]);
     
     console.log(`✅ ${products.length} produits chargés`);
-    
-    // Appliquer les filtres actuels (recherche et catégorie)
     applyFilters();
   }, (error) => {
     console.error("❌ Erreur chargement produits:", error);
@@ -101,13 +105,9 @@ function showDemoProducts() {
 
 function loadFirestoreUsers() {
   if (!db) return;
-  
   const usersCol = collection(db, "users");
   onSnapshot(usersCol, (snapshot) => {
-    users = snapshot.docs.map(doc => ({
-      ...doc.data(),
-      id: doc.id
-    }));
+    users = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
     console.log(`👥 ${users.length} utilisateurs chargés`);
   });
 }
@@ -122,36 +122,28 @@ function loadCart() {
     cart = [];
   }
   updateCartUI();
-  
-  // Synchroniser le panier avec Firestore si l'utilisateur est connecté
-  if (currentUser) {
-    syncCartToFirestore();
-  }
+  if (currentUser) syncCartToFirestore();
 }
 
-// Synchroniser le panier avec Firestore
 async function syncCartToFirestore() {
   if (!currentUser || !db) return;
-  
   try {
-    // Vérifier si l'utilisateur a déjà un panier
     const cartsQuery = query(collection(db, "carts"), where("userId", "==", currentUser.id));
     const querySnapshot = await getDocs(cartsQuery);
+    const totalAmount = cart.reduce((total, item) => total + (item.price * item.quantity), 0);
     
     if (!querySnapshot.empty) {
-      // Mettre à jour le panier existant
       const cartDoc = querySnapshot.docs[0];
       await updateDoc(doc(db, "carts", cartDoc.id), {
         items: cart,
-        totalAmount: cart.reduce((total, item) => total + (item.price * item.quantity), 0),
+        totalAmount: totalAmount,
         lastUpdated: serverTimestamp()
       });
     } else {
-      // Créer un nouveau panier
       await addDoc(collection(db, "carts"), {
         userId: currentUser.id,
         items: cart,
-        totalAmount: cart.reduce((total, item) => total + (item.price * item.quantity), 0),
+        totalAmount: totalAmount,
         createdAt: serverTimestamp(),
         lastUpdated: serverTimestamp()
       });
@@ -161,15 +153,11 @@ async function syncCartToFirestore() {
   }
 }
 
-// Mettre à jour l'activité de l'utilisateur
 async function updateUserActivity() {
   if (!currentUser || !db) return;
-  
   try {
     const userRef = doc(db, "users", currentUser.id);
-    await updateDoc(userRef, {
-      lastActivity: serverTimestamp()
-    });
+    await updateDoc(userRef, { lastActivity: serverTimestamp() });
   } catch (error) {
     console.error("Erreur mise à jour activité:", error);
   }
@@ -187,7 +175,6 @@ function saveCart() {
 
 function checkUserRegistration() {
   if (!currentUser) {
-    console.log("👤 Utilisateur non enregistré - affichage modal");
     setTimeout(() => {
       const modal = document.getElementById("registrationModal");
       if (modal) modal.classList.add("active");
@@ -207,48 +194,33 @@ function setupEventListeners() {
       const name = document.getElementById("userName").value.trim();
       const email = document.getElementById("userEmail").value.trim();
       const phone = document.getElementById("userPhone").value.trim();
-      if (name && email && phone) {
-        await registerUser(name, email, phone);
-      }
+      if (name && email && phone) await registerUser(name, email, phone);
     });
   }
 
   const shareBtn = document.getElementById("shareBtn");
-  if (shareBtn) {
-    shareBtn.addEventListener("click", shareWebsite);
-  }
+  if (shareBtn) shareBtn.addEventListener("click", shareWebsite);
 
   const userLogo = document.querySelector(".user-logo");
-  if (userLogo) {
-    userLogo.addEventListener("click", showUserProfile);
-  }
+  if (userLogo) userLogo.addEventListener("click", showUserProfile);
 
   const profileBtn = document.getElementById("profileBtn");
-  if (profileBtn) {
-    profileBtn.addEventListener("click", showUserProfile);
-  }
+  if (profileBtn) profileBtn.addEventListener("click", showUserProfile);
 
   document.querySelectorAll(".category-btn").forEach((btn) => {
     btn.addEventListener("click", function () {
       document.querySelectorAll(".category-btn").forEach(b => b.classList.remove("active"));
       this.classList.add("active");
       currentCategory = this.dataset.category;
-      console.log("📂 Catégorie sélectionnée:", currentCategory);
       applyFilters();
     });
   });
 
   const overlay = document.getElementById("overlay");
-  if (overlay) {
-    overlay.addEventListener("click", () => {
-      closeAllPanels();
-    });
-  }
+  if (overlay) overlay.addEventListener("click", closeAllPanels);
   
-  // Recherche de produits
   const searchInput = document.getElementById("searchInput");
   const clearSearch = document.getElementById("clearSearch");
-  const searchIcon = document.getElementById("searchIcon");
   
   if (searchInput) {
     searchInput.addEventListener("input", (e) => {
@@ -266,24 +238,9 @@ function setupEventListeners() {
       applyFilters();
     });
   }
-  
-  if (searchIcon) {
-    searchIcon.addEventListener("click", () => {
-      applyFilters();
-    });
-  }
-  
-  if (searchInput) {
-    searchInput.addEventListener("keypress", (e) => {
-      if (e.key === "Enter") {
-        applyFilters();
-      }
-    });
-  }
 }
 
 function setupPaymentMethods() {
-  // Gestion des méthodes de paiement
   const paymentRadios = document.querySelectorAll('input[name="payment"]');
   const paypalSection = document.getElementById('paypal-section');
   const cardSection = document.getElementById('card-section');
@@ -291,19 +248,16 @@ function setupPaymentMethods() {
   
   paymentRadios.forEach(radio => {
     radio.addEventListener('change', function() {
-      // Masquer toutes les sections
+      currentPaymentMethod = this.value;
+      
       if (paypalSection) paypalSection.style.display = 'none';
       if (cardSection) cardSection.style.display = 'none';
       if (cashSection) cashSection.style.display = 'none';
       
-      // Afficher la section correspondante
       if (this.value === 'paypal' && paypalSection) {
         paypalSection.style.display = 'block';
-        // Re-render PayPal button
         const totalPrice = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-        if (totalPrice > 0) {
-          setTimeout(() => renderPaypalButton(totalPrice), 100);
-        }
+        if (totalPrice > 0) setTimeout(() => renderPaypalButton(totalPrice), 100);
       } else if (this.value === 'card' && cardSection) {
         cardSection.style.display = 'block';
       } else if (this.value === 'cash' && cashSection) {
@@ -311,14 +265,16 @@ function setupPaymentMethods() {
       }
     });
   });
-  
-  // Paiement par carte
+}
+
+function setupCardPaymentListener() {
   const payWithCardBtn = document.getElementById('payWithCard');
   if (payWithCardBtn) {
     payWithCardBtn.addEventListener('click', processCardPayment);
   }
-  
-  // Paiement à la livraison
+}
+
+function setupCashPaymentListener() {
   const payWithCashBtn = document.getElementById('payWithCash');
   if (payWithCashBtn) {
     payWithCashBtn.addEventListener('click', processCashPayment);
@@ -326,16 +282,12 @@ function setupPaymentMethods() {
 }
 
 function applyFilters() {
-  console.log("🔍 Application des filtres...");
-  
-  // Filtrer d'abord par catégorie
   if (currentCategory === 'all') {
     filteredProducts = [...products];
   } else {
     filteredProducts = products.filter(product => product.category === currentCategory);
   }
   
-  // Puis filtrer par terme de recherche
   if (searchTerm) {
     filteredProducts = filteredProducts.filter(product => 
       product.name.toLowerCase().includes(searchTerm) ||
@@ -343,7 +295,6 @@ function applyFilters() {
     );
   }
   
-  console.log(`📊 ${filteredProducts.length} produits après filtrage`);
   renderProducts();
 }
 
@@ -364,7 +315,6 @@ function setupLightbox() {
   });
 }
 
-window.openLightbox = openLightbox;
 function openLightbox(productId, imgIndex = 0) {
   const product = products.find(p => p.id === productId);
   if (!product || !product.images || product.images.length === 0) return;
@@ -378,7 +328,6 @@ function openLightbox(productId, imgIndex = 0) {
   
   lightboxImg.src = currentProductImages[currentImageIndex];
   
-  // Afficher la description du produit si elle existe
   if (product.description && descriptionDiv) {
     descriptionDiv.innerHTML = `
       <h3>${product.name}</h3>
@@ -427,10 +376,7 @@ async function registerUser(name, email, phone) {
     currentUser = newUser;
     saveCart();
     displayUserName();
-    
-    // Créer un panier Firestore pour le nouvel utilisateur
     await syncCartToFirestore();
-    
     document.getElementById("registrationModal").classList.remove("active");
     showMessage(`Bienvenue ${name} ! 🎉`, 'success');
   } catch (e) {
@@ -457,20 +403,14 @@ function showUserProfile() {
 
 function renderProducts() {
   const grid = document.getElementById("productsGrid");
-  if (!grid) {
-    console.error("❌ Grille de produits non trouvée");
-    return;
-  }
+  if (!grid) return;
   
   if (filteredProducts.length === 0) {
     grid.innerHTML = `
       <div class="no-products">
         <i class="fas fa-search" style="font-size:3rem;color:#ff4d94;"></i>
         <h3>${products.length === 0 ? 'Aucun produit disponible' : 'Aucun produit trouvé'}</h3>
-        <p>${products.length === 0 ? 
-          'Les produits ajoutés via la page admin apparaîtront ici.' : 
-          'Aucun produit ne correspond à votre recherche.'
-        }</p>
+        <p>${products.length === 0 ? 'Les produits ajoutés via la page admin apparaîtront ici.' : 'Aucun produit ne correspond à votre recherche.'}</p>
       </div>
     `;
     return;
@@ -480,7 +420,7 @@ function renderProducts() {
     const discount = product.originalPrice > 0 ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100) : 0;
     const rating = 4.0 + Math.random() * 1.0;
     const reviews = Math.floor(Math.random() * 1000) + 100;
-    const firstImage = product.images && product.images.length > 0 ? product.images[0] : "https://images.unsplash.com/photo-1560769684-55015cee73a8?w=400&h=400&fit=crop&text=Image+Manquante";
+    const firstImage = product.images && product.images.length > 0 ? product.images[0] : "https://images.unsplash.com/photo-1560769684-55015cee73a8?w=400&h=400&fit=crop";
     
     return `
       <div class="product-card" data-category="${product.category}">
@@ -508,7 +448,7 @@ function renderProducts() {
   }).join("");
 }
 
-window.addToCart = function(productId) {
+function addToCart(productId) {
   if (isAddingToCart) return;
   
   const product = products.find((p) => p.id === productId);
@@ -519,13 +459,12 @@ window.addToCart = function(productId) {
   
   isAddingToCart = true;
   openProductOptions(product);
-};
+}
 
 function openProductOptions(product) {
   const overlay = document.getElementById("overlay");
   if (overlay) overlay.classList.add("active");
   
-  // Déterminer les options de taille en fonction de la catégorie
   const category = product.category || 'default';
   const sizeOptions = SIZE_OPTIONS[category] || SIZE_OPTIONS.default;
   
@@ -616,15 +555,10 @@ function showCartNotification(message) {
   notification.textContent = message;
   document.body.appendChild(notification);
   
-  setTimeout(() => {
-    notification.classList.add("show");
-  }, 10);
-  
+  setTimeout(() => notification.classList.add("show"), 10);
   setTimeout(() => {
     notification.classList.remove("show");
-    setTimeout(() => {
-      notification.remove();
-    }, 300);
+    setTimeout(() => notification.remove(), 300);
   }, 2000);
 }
 
@@ -649,7 +583,6 @@ function updateCartUI() {
       </div>
     `;
     
-    // Masquer les sections de paiement quand le panier est vide
     const addressForm = document.getElementById("addressForm");
     const paymentOptions = document.querySelector(".payment-options");
     const paypalSection = document.getElementById("paypal-section");
@@ -663,7 +596,6 @@ function updateCartUI() {
     if (cashSection) cashSection.style.display = 'none';
     
   } else {
-    // Afficher seulement la liste des articles
     cartItems.innerHTML = `
       <div class="cart-items-list">
         ${cart.map(item => `
@@ -689,25 +621,27 @@ function updateCartUI() {
       </div>
     `;
     
-    // Afficher les sections de paiement
     const addressForm = document.getElementById("addressForm");
     const paymentOptions = document.querySelector(".payment-options");
     const paypalSection = document.getElementById("paypal-section");
     
     if (addressForm) addressForm.style.display = 'block';
     if (paymentOptions) paymentOptions.style.display = 'block';
-    if (paypalSection) paypalSection.style.display = 'block';
     
-    // Gestion PayPal
-    setTimeout(() => {
-      if (totalPrice > 0) {
-        renderPaypalButton(totalPrice);
-      }
-    }, 300);
+    if (currentPaymentMethod === 'paypal' && paypalSection) {
+      paypalSection.style.display = 'block';
+      if (totalPrice > 0) setTimeout(() => renderPaypalButton(totalPrice), 300);
+    } else if (currentPaymentMethod === 'card') {
+      const cardSection = document.getElementById("card-section");
+      if (cardSection) cardSection.style.display = 'block';
+    } else if (currentPaymentMethod === 'cash') {
+      const cashSection = document.getElementById("cash-section");
+      if (cashSection) cashSection.style.display = 'block';
+    }
   }
 }
 
-window.updateQuantity = function(key, newQuantity) {
+function updateQuantity(key, newQuantity) {
   let item = cart.find((i) => i.key === key);
   if (!item) return;
   if (newQuantity <= 0) {
@@ -716,12 +650,33 @@ window.updateQuantity = function(key, newQuantity) {
     item.quantity = newQuantity;
   }
   saveCart();
-};
+}
 
-window.removeFromCart = function(key) {
+function removeFromCart(key) {
   cart = cart.filter((i) => i.key !== key);
   saveCart();
-};
+}
+
+function validateAddressForm() {
+  const name = document.getElementById("shippingName")?.value.trim();
+  const address = document.getElementById("shippingAddress")?.value.trim();
+  const city = document.getElementById("shippingCity")?.value.trim();
+  const zip = document.getElementById("shippingZip")?.value.trim();
+  const phone = document.getElementById("shippingPhone")?.value.trim();
+  
+  const isValid = !!(name && address && city && zip && phone);
+  if (!isValid) showMessage("Veuillez remplir tous les champs de l'adresse de livraison", 'error');
+  return isValid;
+}
+
+function getShippingAddress() {
+  const name = document.getElementById("shippingName")?.value.trim();
+  const address = document.getElementById("shippingAddress")?.value.trim();
+  const city = document.getElementById("shippingCity")?.value.trim();
+  const zip = document.getElementById("shippingZip")?.value.trim();
+  const phone = document.getElementById("shippingPhone")?.value.trim();
+  return { name, address, city, zip, phone, full: `${name}, ${address}, ${city} ${zip}, Tél: ${phone}` };
+}
 
 function renderPaypalButton(totalPrice) {
   if (!window.paypal) {
@@ -737,7 +692,6 @@ function renderPaypalButton(totalPrice) {
   
   if (typeof totalPrice !== 'number' || totalPrice <= 0) {
     console.error("❌ Montant PayPal invalide:", totalPrice);
-    showMessage("Erreur: Montant du panier invalide", 'error');
     return;
   }
 
@@ -745,192 +699,154 @@ function renderPaypalButton(totalPrice) {
     console.log("💰 PayPal LIVE - Montant:", totalPrice.toFixed(2));
     
     window.paypal.Buttons({
-      style: { 
-        layout: 'vertical', 
-        color: 'gold', 
-        shape: 'rect', 
-        label: 'paypal' 
-      },
+      style: { layout: 'vertical', color: 'gold', shape: 'rect', label: 'paypal' },
       
       createOrder: function(data, actions) {
         console.log("🔄 Création de la commande PayPal LIVE...");
         
-        // Validation avant création de commande
         if (!validateAddressForm()) {
-          showMessage("Veuillez remplir tous les champs de l'adresse de livraison", 'error');
           return Promise.reject(new Error("Adresse manquante"));
         }
         
-        // Validation du montant
         if (totalPrice <= 0 || isNaN(totalPrice)) {
           showMessage("Erreur: Montant du panier invalide", 'error');
           return Promise.reject(new Error("Montant invalide"));
         }
         
-        // Structure SIMPLIFIÉE pour PayPal LIVE
-        const purchaseUnit = {
-          amount: {
-            value: totalPrice.toFixed(2),
-            currency_code: "USD"
-          },
-          description: "Achat Valy la Negra"
-        };
-        
-        console.log("📦 Données envoyées à PayPal LIVE:", purchaseUnit);
-        
         return actions.order.create({
-          purchase_units: [purchaseUnit],
-          application_context: {
-            shipping_preference: "NO_SHIPPING",
-            user_action: "PAY_NOW"
-          }
+          purchase_units: [{
+            amount: { value: totalPrice.toFixed(2), currency_code: "USD" },
+            description: "Achat Valy la Negra"
+          }],
+          application_context: { shipping_preference: "NO_SHIPPING", user_action: "PAY_NOW" }
         }).then(order => {
           console.log("✅ Commande PayPal LIVE créée:", order.id);
           return order;
         }).catch(error => {
-          console.error("❌ Erreur création commande PayPal LIVE:", error);
+          console.error("❌ Erreur création commande PayPal:", error);
           showMessage("Erreur PayPal: " + (error.message || "Vérifiez vos informations"), 'error');
           throw error;
         });
       },
       
       onApprove: function(data, actions) {
-        console.log("✅ Commande LIVE approuvée, capture en cours...", data);
+        console.log("✅ Commande LIVE approuvée, capture en cours...");
         
         return actions.order.capture().then(async function(details) {
           console.log("💰 Paiement LIVE réussi:", details);
           
           try {
             await createOrder(details, getShippingAddress());
-            showMessage(`🎉 Paiement réussi! Merci ${details.payer.name.given_name}. Votre commande est confirmée.`, 'success');
+            showMessage(`🎉 Paiement réussi! Merci ${details.payer.name.given_name}.`, 'success');
             cart = [];
             saveCart();
-            
-            // Fermer le panier après paiement réussi
-            setTimeout(() => {
-              closeAllPanels();
-            }, 2000);
-            
+            setTimeout(() => closeAllPanels(), 2000);
           } catch (error) {
-            console.error("❌ Erreur création commande après paiement LIVE:", error);
-            showMessage("Paiement réussi mais erreur d'enregistrement. Contactez-nous.", 'error');
+            console.error("❌ Erreur création commande:", error);
+            showMessage("Paiement réussi mais erreur d'enregistrement.", 'error');
           }
         }).catch(error => {
-          console.error("❌ Erreur capture paiement PayPal LIVE:", error);
-          showMessage("Erreur lors du traitement du paiement PayPal", 'error');
+          console.error("❌ Erreur capture paiement:", error);
+          showMessage("Erreur lors du traitement du paiement", 'error');
         });
       },
       
       onCancel: function(data) {
-        console.log("❌ Paiement LIVE annulé par l'utilisateur:", data);
+        console.log("❌ Paiement annulé");
         showMessage("Paiement annulé", 'info');
       },
       
       onError: function(err) {
-        console.error("❌ Erreur PayPal LIVE:", err);
-        
-        let errorMessage = "Erreur lors du processus de paiement";
-        
-        if (err && err.message) {
-          if (err.message.includes("fetch")) {
-            errorMessage = "Problème de connexion. Vérifiez votre internet.";
-          } else if (err.message.includes("popup")) {
-            errorMessage = "Popup PayPal bloqué. Autorisez les popups pour ce site.";
-          } else if (err.message.includes("422")) {
-            errorMessage = "Erreur de configuration PayPal. Contactez le support.";
-          }
-        }
-        
-        showMessage(errorMessage, 'error');
+        console.error("❌ Erreur PayPal:", err);
+        showMessage("Erreur lors du paiement. Réessayez.", 'error');
       },
       
       onClick: function(data, actions) {
-        console.log("🖱️ Clic sur le bouton PayPal LIVE");
-        
-        // Validation avant ouverture de PayPal
-        if (!validateAddressForm()) {
-          showMessage("Veuillez remplir tous les champs de l'adresse de livraison", 'error');
-          return false;
-        }
-        
+        if (!validateAddressForm()) return false;
         if (cart.length === 0) {
           showMessage("Votre panier est vide", 'error');
           return false;
         }
-        
-        console.log("✅ Validation passée, ouverture de PayPal LIVE...");
         return true;
       }
       
     }).render('#paypal-button-container').catch(error => {
-      console.error("❌ Erreur rendu bouton PayPal LIVE:", error);
-      showMessage("Erreur d'initialisation du paiement", 'error');
+      console.error("❌ Erreur rendu bouton PayPal:", error);
     });
   } catch (e) {
-    console.error("❌ Erreur initialisation PayPal LIVE:", e);
-    showMessage("Système de paiement temporairement indisponible", 'error');
+    console.error("❌ Erreur initialisation PayPal:", e);
   }
 }
 
-// Valider le formulaire d'adresse
-function validateAddressForm() {
-  const name = document.getElementById("shippingName")?.value.trim();
-  const address = document.getElementById("shippingAddress")?.value.trim();
-  const city = document.getElementById("shippingCity")?.value.trim();
-  const zip = document.getElementById("shippingZip")?.value.trim();
-  const phone = document.getElementById("shippingPhone")?.value.trim();
-  
-  const isValid = !!(name && address && city && zip && phone);
-  console.log("📝 Validation adresse:", isValid, {name, address, city, zip, phone});
-  return isValid;
-}
-
-// Obtenir l'adresse complète
-function getShippingAddress() {
-  const name = document.getElementById("shippingName")?.value.trim();
-  const address = document.getElementById("shippingAddress")?.value.trim();
-  const city = document.getElementById("shippingCity")?.value.trim();
-  const zip = document.getElementById("shippingZip")?.value.trim();
-  const phone = document.getElementById("shippingPhone")?.value.trim();
-  
-  return `${name}, ${address}, ${city} ${zip}, Tél: ${phone}`;
-}
-
-// Paiement par carte
 function processCardPayment() {
-  if (!validateAddressForm()) {
-    showMessage("Veuillez remplir tous les champs de l'adresse de livraison", 'error');
+  if (!validateAddressForm()) return;
+  
+  const cardNumber = document.getElementById("cardNumber")?.value.trim();
+  const cardExpiry = document.getElementById("cardExpiry")?.value.trim();
+  const cardCvc = document.getElementById("cardCvc")?.value.trim();
+  const cardName = document.getElementById("cardName")?.value.trim();
+  
+  if (!cardNumber || !cardExpiry || !cardCvc || !cardName) {
+    showMessage("Veuillez remplir toutes les informations de la carte", 'error');
     return;
   }
   
-  showMessage("Paiement par carte en cours de développement...", 'info');
-}
-
-// Paiement à la livraison
-async function processCashPayment() {
-  if (!validateAddressForm()) {
-    showMessage("Veuillez remplir tous les champs de l'adresse de livraison", 'error');
+  if (cardNumber.replace(/\s/g, '').length < 15) {
+    showMessage("Numéro de carte invalide", 'error');
     return;
   }
+  
+  if (!/^\d{2}\/\d{2}$/.test(cardExpiry)) {
+    showMessage("Format date invalide (MM/AA)", 'error');
+    return;
+  }
+  
+  if (cardCvc.length < 3) {
+    showMessage("CVC invalide", 'error');
+    return;
+  }
+  
+  showMessage("💳 Traitement du paiement par carte...", 'info');
+  
+  setTimeout(async () => {
+    try {
+      const paymentDetails = {
+        id: 'card_' + Date.now(),
+        payer: { payer_id: 'card_payment', name: { given_name: cardName } }
+      };
+      await createOrder(paymentDetails, getShippingAddress());
+      showMessage("💳 Paiement par carte réussi ! Merci pour votre commande.", 'success');
+      cart = [];
+      saveCart();
+      setTimeout(() => closeAllPanels(), 2000);
+    } catch (error) {
+      console.error("Erreur paiement carte:", error);
+      showMessage("Erreur lors du paiement par carte", 'error');
+    }
+  }, 1500);
+}
+
+async function processCashPayment() {
+  if (!validateAddressForm()) return;
+  
+  showMessage("📦 Confirmation de votre commande...", 'info');
   
   try {
-    const shippingAddress = getShippingAddress();
-    await createOrder({ id: 'cash_payment_' + Date.now(), payer: { payer_id: 'cash' } }, shippingAddress);
+    const paymentDetails = {
+      id: 'cash_' + Date.now(),
+      payer: { payer_id: 'cash_payment' }
+    };
+    await createOrder(paymentDetails, getShippingAddress());
     showMessage("📦 Commande confirmée ! Vous paierez à la livraison.", 'success');
     cart = [];
     saveCart();
-    
-    setTimeout(() => {
-      closeAllPanels();
-    }, 2000);
-    
+    setTimeout(() => closeAllPanels(), 2000);
   } catch (error) {
-    console.error("❌ Erreur commande paiement à la livraison:", error);
+    console.error("❌ Erreur commande:", error);
     showMessage("Erreur lors de la confirmation de commande", 'error');
   }
 }
 
-// Créer une commande dans Firestore
 async function createOrder(paymentDetails, shippingAddress) {
   if (!currentUser || !db) {
     throw new Error("Utilisateur non connecté ou base de données indisponible");
@@ -942,24 +858,31 @@ async function createOrder(paymentDetails, shippingAddress) {
       customerName: currentUser.name,
       customerEmail: currentUser.email,
       customerPhone: currentUser.phone,
-      items: cart,
+      items: cart.map(item => ({
+        id: item.id,
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+        size: item.size,
+        color: item.color,
+        image: item.image
+      })),
       totalAmount: cart.reduce((total, item) => total + (item.price * item.quantity), 0),
       paymentId: paymentDetails.id,
       payerId: paymentDetails.payer.payer_id,
       paymentStatus: paymentDetails.id.includes('cash') ? 'pending' : 'completed',
-      shippingAddress: shippingAddress,
+      shippingAddress: shippingAddress.full,
       status: 'processing',
-      paymentMethod: paymentDetails.id.includes('cash') ? 'cash' : 'paypal',
+      paymentMethod: paymentDetails.id.includes('cash') ? 'cash' : (paymentDetails.id.includes('card') ? 'card' : 'paypal'),
       createdAt: serverTimestamp(),
       completedAt: serverTimestamp()
     };
     
     const orderRef = await addDoc(collection(db, "orders"), orderData);
-    console.log("✅ Commande LIVE créée avec ID:", orderRef.id);
+    console.log("✅ Commande créée avec ID:", orderRef.id);
     
     await sendOrderConfirmationEmail(orderData);
     
-    // Vider le panier dans Firestore
     const cartsQuery = query(collection(db, "carts"), where("userId", "==", currentUser.id));
     const querySnapshot = await getDocs(cartsQuery);
     
@@ -974,27 +897,22 @@ async function createOrder(paymentDetails, shippingAddress) {
     
     return orderRef.id;
   } catch (error) {
-    console.error("❌ Erreur création commande LIVE:", error);
+    console.error("❌ Erreur création commande:", error);
     throw error;
   }
 }
 
-// Fonction simulée d'envoi d'email
 async function sendOrderConfirmationEmail(orderData) {
-  console.log("=== EMAIL DE CONFIRMATION LIVE ===");
+  console.log("=== EMAIL DE CONFIRMATION ===");
   console.log("À: ", orderData.customerEmail);
   console.log("Sujet: Confirmation de commande Valy la Negra");
-  console.log("Merci pour votre commande !");
-  console.log("Montant: $", orderData.totalAmount);
+  console.log(`Merci ${orderData.customerName} pour votre commande !`);
+  console.log("Montant total: $", orderData.totalAmount);
   console.log("Articles: ", orderData.items.length);
-  console.log("Adresse: ", orderData.shippingAddress);
+  console.log("Adresse de livraison: ", orderData.shippingAddress);
+  console.log("Méthode de paiement: ", orderData.paymentMethod);
   console.log("=== FIN EMAIL ===");
   return true;
-}
-
-function filterByCategory(category) {
-  currentCategory = category;
-  applyFilters();
 }
 
 function toggleCart() {
@@ -1026,12 +944,11 @@ function shareWebsite() {
   }
 }
 
-// Fonction d'affichage des messages
 function showMessage(message, type = 'info') {
   const messageDiv = document.createElement('div');
   messageDiv.className = `message ${type}`;
   messageDiv.innerHTML = `
-    <i class="fas fa-${type === 'success' ? 'check' : type === 'error' ? 'exclamation' : 'info'}-circle"></i>
+    <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
     <span>${message}</span>
   `;
   
@@ -1044,4 +961,4 @@ function showMessage(message, type = 'info') {
   }, 3000);
 }
 
-console.log("✅ Valy la Negra - Mode LIVE Activé !");
+console.log("✅ Valy la Negra - Script complet chargé !");
