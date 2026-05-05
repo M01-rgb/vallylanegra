@@ -64,7 +64,6 @@ function loadFirestoreProducts() {
   
   if (!db) {
     console.error("❌ Firestore non initialisé");
-    showDemoProducts();
     return;
   }
   
@@ -72,20 +71,23 @@ function loadFirestoreProducts() {
   const q = query(productsCol, orderBy("createdAt", "desc"));
   
   onSnapshot(q, (snapshot) => {
-    console.log("🔥 Données produits reçues");
+    console.log("🔥 Données produits reçues, nombre:", snapshot.docs.length);
     
     allProducts = snapshot.docs.map(doc => ({
       ...doc.data(),
       id: doc.id
     }));
     
+    // Mélanger aléatoirement les produits
     products = shuffleArray([...allProducts]);
+    filteredProducts = [...products];
     
-    console.log(`✅ ${products.length} produits chargés`);
+    console.log(`✅ ${products.length} produits chargés depuis Firestore`);
+    
+    // Appliquer les filtres actuels
     applyFilters();
   }, (error) => {
     console.error("❌ Erreur chargement produits:", error);
-    showDemoProducts();
   });
 }
 
@@ -97,17 +99,15 @@ function shuffleArray(array) {
   return array;
 }
 
-function showDemoProducts() {
-  console.log("🔄 Affichage des produits de démonstration");
-  products = [];
-  renderProducts();
-}
-
 function loadFirestoreUsers() {
   if (!db) return;
+  
   const usersCol = collection(db, "users");
   onSnapshot(usersCol, (snapshot) => {
-    users = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+    users = snapshot.docs.map(doc => ({
+      ...doc.data(),
+      id: doc.id
+    }));
     console.log(`👥 ${users.length} utilisateurs chargés`);
   });
 }
@@ -115,18 +115,26 @@ function loadFirestoreUsers() {
 function loadCart() {
   try {
     cart = JSON.parse(localStorage.getItem("valylanegra-cart")) || [];
-    currentUser = JSON.parse(localStorage.getItem("valylanegra-current-user"));
+    const savedUser = localStorage.getItem("valylanegra-current-user");
+    if (savedUser && savedUser !== 'undefined') {
+      currentUser = JSON.parse(savedUser);
+    }
     console.log("🛒 Panier chargé:", cart.length, "articles");
   } catch (e) {
     console.error("❌ Erreur chargement panier:", e);
     cart = [];
+    currentUser = null;
   }
   updateCartUI();
-  if (currentUser) syncCartToFirestore();
+  
+  if (currentUser && currentUser.id) {
+    syncCartToFirestore();
+  }
 }
 
 async function syncCartToFirestore() {
-  if (!currentUser || !db) return;
+  if (!currentUser || !currentUser.id || !db) return;
+  
   try {
     const cartsQuery = query(collection(db, "carts"), where("userId", "==", currentUser.id));
     const querySnapshot = await getDocs(cartsQuery);
@@ -139,7 +147,8 @@ async function syncCartToFirestore() {
         totalAmount: totalAmount,
         lastUpdated: serverTimestamp()
       });
-    } else {
+      console.log("✅ Panier synchronisé avec Firestore");
+    } else if (cart.length > 0) {
       await addDoc(collection(db, "carts"), {
         userId: currentUser.id,
         items: cart,
@@ -147,6 +156,7 @@ async function syncCartToFirestore() {
         createdAt: serverTimestamp(),
         lastUpdated: serverTimestamp()
       });
+      console.log("✅ Panier créé dans Firestore");
     }
   } catch (error) {
     console.error("Erreur synchronisation panier:", error);
@@ -154,10 +164,13 @@ async function syncCartToFirestore() {
 }
 
 async function updateUserActivity() {
-  if (!currentUser || !db) return;
+  if (!currentUser || !currentUser.id || !db) return;
+  
   try {
     const userRef = doc(db, "users", currentUser.id);
-    await updateDoc(userRef, { lastActivity: serverTimestamp() });
+    await updateDoc(userRef, {
+      lastActivity: serverTimestamp()
+    });
   } catch (error) {
     console.error("Erreur mise à jour activité:", error);
   }
@@ -165,7 +178,7 @@ async function updateUserActivity() {
 
 function saveCart() {
   localStorage.setItem("valylanegra-cart", JSON.stringify(cart));
-  if (currentUser) {
+  if (currentUser && currentUser.id) {
     localStorage.setItem("valylanegra-current-user", JSON.stringify(currentUser));
     updateUserActivity();
     syncCartToFirestore();
@@ -174,11 +187,12 @@ function saveCart() {
 }
 
 function checkUserRegistration() {
-  if (!currentUser) {
+  if (!currentUser || !currentUser.id) {
+    console.log("👤 Utilisateur non enregistré - affichage modal");
     setTimeout(() => {
       const modal = document.getElementById("registrationModal");
       if (modal) modal.classList.add("active");
-    }, 1000);
+    }, 500);
   } else {
     displayUserName();
   }
@@ -194,33 +208,48 @@ function setupEventListeners() {
       const name = document.getElementById("userName").value.trim();
       const email = document.getElementById("userEmail").value.trim();
       const phone = document.getElementById("userPhone").value.trim();
-      if (name && email && phone) await registerUser(name, email, phone);
+      if (name && email && phone) {
+        await registerUser(name, email, phone);
+      }
     });
   }
 
   const shareBtn = document.getElementById("shareBtn");
-  if (shareBtn) shareBtn.addEventListener("click", shareWebsite);
+  if (shareBtn) {
+    shareBtn.addEventListener("click", shareWebsite);
+  }
 
   const userLogo = document.querySelector(".user-logo");
-  if (userLogo) userLogo.addEventListener("click", showUserProfile);
+  if (userLogo) {
+    userLogo.addEventListener("click", showUserProfile);
+  }
 
   const profileBtn = document.getElementById("profileBtn");
-  if (profileBtn) profileBtn.addEventListener("click", showUserProfile);
+  if (profileBtn) {
+    profileBtn.addEventListener("click", showUserProfile);
+  }
 
   document.querySelectorAll(".category-btn").forEach((btn) => {
     btn.addEventListener("click", function () {
       document.querySelectorAll(".category-btn").forEach(b => b.classList.remove("active"));
       this.classList.add("active");
       currentCategory = this.dataset.category;
+      console.log("📂 Catégorie sélectionnée:", currentCategory);
       applyFilters();
     });
   });
 
   const overlay = document.getElementById("overlay");
-  if (overlay) overlay.addEventListener("click", closeAllPanels);
+  if (overlay) {
+    overlay.addEventListener("click", () => {
+      closeAllPanels();
+    });
+  }
   
+  // Recherche de produits
   const searchInput = document.getElementById("searchInput");
   const clearSearch = document.getElementById("clearSearch");
+  const searchIcon = document.getElementById("searchIcon");
   
   if (searchInput) {
     searchInput.addEventListener("input", (e) => {
@@ -236,6 +265,20 @@ function setupEventListeners() {
       searchTerm = '';
       if (clearSearch) clearSearch.style.display = 'none';
       applyFilters();
+    });
+  }
+  
+  if (searchIcon) {
+    searchIcon.addEventListener("click", () => {
+      applyFilters();
+    });
+  }
+  
+  if (searchInput) {
+    searchInput.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") {
+        applyFilters();
+      }
     });
   }
 }
@@ -257,7 +300,9 @@ function setupPaymentMethods() {
       if (this.value === 'paypal' && paypalSection) {
         paypalSection.style.display = 'block';
         const totalPrice = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-        if (totalPrice > 0) setTimeout(() => renderPaypalButton(totalPrice), 100);
+        if (totalPrice > 0) {
+          setTimeout(() => renderPaypalButton(totalPrice), 100);
+        }
       } else if (this.value === 'card' && cardSection) {
         cardSection.style.display = 'block';
       } else if (this.value === 'cash' && cashSection) {
@@ -282,12 +327,19 @@ function setupCashPaymentListener() {
 }
 
 function applyFilters() {
+  console.log("🔍 Application des filtres...");
+  console.log("Produits disponibles:", products.length);
+  console.log("Catégorie:", currentCategory);
+  console.log("Recherche:", searchTerm);
+  
+  // Filtrer d'abord par catégorie
   if (currentCategory === 'all') {
     filteredProducts = [...products];
   } else {
     filteredProducts = products.filter(product => product.category === currentCategory);
   }
   
+  // Puis filtrer par terme de recherche
   if (searchTerm) {
     filteredProducts = filteredProducts.filter(product => 
       product.name.toLowerCase().includes(searchTerm) ||
@@ -295,6 +347,7 @@ function applyFilters() {
     );
   }
   
+  console.log(`📊 ${filteredProducts.length} produits après filtrage`);
   renderProducts();
 }
 
@@ -376,8 +429,11 @@ async function registerUser(name, email, phone) {
     currentUser = newUser;
     saveCart();
     displayUserName();
+    
     await syncCartToFirestore();
-    document.getElementById("registrationModal").classList.remove("active");
+    
+    const modal = document.getElementById("registrationModal");
+    if (modal) modal.classList.remove("active");
     showMessage(`Bienvenue ${name} ! 🎉`, 'success');
   } catch (e) {
     console.error("❌ Erreur inscription:", e);
@@ -387,37 +443,44 @@ async function registerUser(name, email, phone) {
 
 function displayUserName() {
   const nameDisplay = document.getElementById("userNameDisplay");
-  if (nameDisplay) {
-    const name = currentUser && currentUser.name ? currentUser.name : "Valy la Negra";
-    nameDisplay.textContent = name;
+  if (nameDisplay && currentUser && currentUser.name) {
+    nameDisplay.textContent = currentUser.name;
   }
 }
 
 function showUserProfile() {
-  if (!currentUser) {
+  if (!currentUser || !currentUser.id) {
     showMessage("Veuillez vous inscrire d'abord!", 'error');
+    const modal = document.getElementById("registrationModal");
+    if (modal) modal.classList.add("active");
     return;
   }
-  alert(`Bienvenue ${currentUser.name}\nEmail : ${currentUser.email}\nTéléphone : ${currentUser.phone}`);
+  alert(`👤 ${currentUser.name}\n📧 ${currentUser.email}\n📞 ${currentUser.phone}`);
 }
 
 function renderProducts() {
   const grid = document.getElementById("productsGrid");
-  if (!grid) return;
+  if (!grid) {
+    console.error("❌ Grille de produits non trouvée");
+    return;
+  }
   
-  if (filteredProducts.length === 0) {
+  if (!filteredProducts || filteredProducts.length === 0) {
     grid.innerHTML = `
       <div class="no-products">
         <i class="fas fa-search" style="font-size:3rem;color:#ff4d94;"></i>
         <h3>${products.length === 0 ? 'Aucun produit disponible' : 'Aucun produit trouvé'}</h3>
-        <p>${products.length === 0 ? 'Les produits ajoutés via la page admin apparaîtront ici.' : 'Aucun produit ne correspond à votre recherche.'}</p>
+        <p>${products.length === 0 ? 
+          'Les produits ajoutés via la page admin apparaîtront ici.' : 
+          'Aucun produit ne correspond à votre recherche.'
+        }</p>
       </div>
     `;
     return;
   }
   
   grid.innerHTML = filteredProducts.map(product => {
-    const discount = product.originalPrice > 0 ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100) : 0;
+    const discount = product.originalPrice && product.originalPrice > 0 ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100) : 0;
     const rating = 4.0 + Math.random() * 1.0;
     const reviews = Math.floor(Math.random() * 1000) + 100;
     const firstImage = product.images && product.images.length > 0 ? product.images[0] : "https://images.unsplash.com/photo-1560769684-55015cee73a8?w=400&h=400&fit=crop";
@@ -430,14 +493,14 @@ function renderProducts() {
           ${discount > 0 ? `<div class="discount-badge">-${discount}%</div>` : ''}
         </div>
         <div class="product-info">
-          <div class="product-name">${product.name}</div>
+          <div class="product-name">${escapeHtml(product.name)}</div>
           <div class="product-rating">
             <span class="stars">${"★".repeat(Math.floor(rating))}${"☆".repeat(5 - Math.floor(rating))}</span>
             <span>(${reviews})</span>
           </div>
           <div class="product-price">
             <span class="current-price">$${product.price.toFixed(2)}</span>
-            ${product.originalPrice > 0 ? `<span class="original-price">$${product.originalPrice.toFixed(2)}</span>` : ''}
+            ${product.originalPrice && product.originalPrice > 0 ? `<span class="original-price">$${product.originalPrice.toFixed(2)}</span>` : ''}
           </div>
           <button class="add-to-cart" onclick="addToCart('${product.id}'); event.stopPropagation()">
             <i class="fas fa-shopping-cart"></i> Ajouter
@@ -446,6 +509,16 @@ function renderProducts() {
       </div>
     `;
   }).join("");
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return str.replace(/[&<>]/g, function(m) {
+    if (m === '&') return '&amp;';
+    if (m === '<') return '&lt;';
+    if (m === '>') return '&gt;';
+    return m;
+  });
 }
 
 function addToCart(productId) {
@@ -475,7 +548,7 @@ function openProductOptions(product) {
     <div class="modal-content" style="max-width:400px;">
       <h3>Ajouter au panier</h3>
       <img src="${product.images && product.images.length > 0 ? product.images[0] : 'https://images.unsplash.com/photo-1560769684-55015cee73a8?w=120&h=120&fit=crop'}" style="max-width:120px;max-height:120px;border-radius:6px;">
-      <p><strong>${product.name}</strong></p>
+      <p><strong>${escapeHtml(product.name)}</strong></p>
       <form id="optionsForm">
         <label for="cartSize">Taille/Modèle :</label>
         <select id="cartSize" name="size" required>
@@ -555,10 +628,15 @@ function showCartNotification(message) {
   notification.textContent = message;
   document.body.appendChild(notification);
   
-  setTimeout(() => notification.classList.add("show"), 10);
+  setTimeout(() => {
+    notification.classList.add("show");
+  }, 10);
+  
   setTimeout(() => {
     notification.classList.remove("show");
-    setTimeout(() => notification.remove(), 300);
+    setTimeout(() => {
+      notification.remove();
+    }, 300);
   }, 2000);
 }
 
@@ -602,9 +680,9 @@ function updateCartUI() {
           <div class="cart-item">
             <img src="${item.image}" alt="${item.name}">
             <div class="cart-item-info">
-              <div class="cart-item-name">${item.name}</div>
+              <div class="cart-item-name">${escapeHtml(item.name)}</div>
               <div style="font-size:0.9em;color:#666;">
-                ${item.size ? `Taille/Modèle: <b>${item.size}</b>, ` : ''}Couleur: <b>${item.color}</b>
+                ${item.size ? `Taille/Modèle: <b>${escapeHtml(item.size)}</b>, ` : ''}Couleur: <b>${escapeHtml(item.color)}</b>
               </div>
               <div class="cart-item-price">$${item.price.toFixed(2)}</div>
               <div class="quantity-controls">
@@ -630,7 +708,9 @@ function updateCartUI() {
     
     if (currentPaymentMethod === 'paypal' && paypalSection) {
       paypalSection.style.display = 'block';
-      if (totalPrice > 0) setTimeout(() => renderPaypalButton(totalPrice), 300);
+      if (totalPrice > 0) {
+        setTimeout(() => renderPaypalButton(totalPrice), 300);
+      }
     } else if (currentPaymentMethod === 'card') {
       const cardSection = document.getElementById("card-section");
       if (cardSection) cardSection.style.display = 'block';
@@ -665,7 +745,9 @@ function validateAddressForm() {
   const phone = document.getElementById("shippingPhone")?.value.trim();
   
   const isValid = !!(name && address && city && zip && phone);
-  if (!isValid) showMessage("Veuillez remplir tous les champs de l'adresse de livraison", 'error');
+  if (!isValid) {
+    showMessage("Veuillez remplir tous les champs de l'adresse de livraison", 'error');
+  }
   return isValid;
 }
 
@@ -696,13 +778,13 @@ function renderPaypalButton(totalPrice) {
   }
 
   try {
-    console.log("💰 PayPal LIVE - Montant:", totalPrice.toFixed(2));
+    console.log("💰 PayPal - Montant:", totalPrice.toFixed(2));
     
     window.paypal.Buttons({
       style: { layout: 'vertical', color: 'gold', shape: 'rect', label: 'paypal' },
       
       createOrder: function(data, actions) {
-        console.log("🔄 Création de la commande PayPal LIVE...");
+        console.log("🔄 Création de la commande PayPal...");
         
         if (!validateAddressForm()) {
           return Promise.reject(new Error("Adresse manquante"));
@@ -720,7 +802,7 @@ function renderPaypalButton(totalPrice) {
           }],
           application_context: { shipping_preference: "NO_SHIPPING", user_action: "PAY_NOW" }
         }).then(order => {
-          console.log("✅ Commande PayPal LIVE créée:", order.id);
+          console.log("✅ Commande PayPal créée:", order.id);
           return order;
         }).catch(error => {
           console.error("❌ Erreur création commande PayPal:", error);
@@ -730,10 +812,10 @@ function renderPaypalButton(totalPrice) {
       },
       
       onApprove: function(data, actions) {
-        console.log("✅ Commande LIVE approuvée, capture en cours...");
+        console.log("✅ Commande approuvée, capture en cours...");
         
         return actions.order.capture().then(async function(details) {
-          console.log("💰 Paiement LIVE réussi:", details);
+          console.log("💰 Paiement réussi:", details);
           
           try {
             await createOrder(details, getShippingAddress());
@@ -848,7 +930,7 @@ async function processCashPayment() {
 }
 
 async function createOrder(paymentDetails, shippingAddress) {
-  if (!currentUser || !db) {
+  if (!currentUser || !currentUser.id || !db) {
     throw new Error("Utilisateur non connecté ou base de données indisponible");
   }
   
