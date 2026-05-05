@@ -25,7 +25,6 @@ let currentImageIndex = 0;
 let isAddingToCart = false;
 let searchTerm = '';
 let currentCategory = 'all';
-let currentPaymentMethod = 'paypal';
 
 // Options par catégorie
 const SIZE_OPTIONS = {
@@ -50,7 +49,6 @@ document.addEventListener("DOMContentLoaded", () => {
   setupEventListeners();
   setupLightbox();
   setupPaymentMethods();
-  setupCardPaymentListener();
   window.toggleCart = toggleCart;
   window.updateQuantity = updateQuantity;
   window.removeFromCart = removeFromCart;
@@ -279,31 +277,21 @@ function setupEventListeners() {
 }
 
 function setupPaymentMethods() {
-  const paymentRadios = document.querySelectorAll('input[name="payment"]');
+  // Les deux méthodes sont directement visibles - Plus besoin de choix
   const paypalSection = document.getElementById('paypal-section');
   const cardSection = document.getElementById('card-section');
   
-  paymentRadios.forEach(radio => {
-    radio.addEventListener('change', function() {
-      currentPaymentMethod = this.value;
-      
-      if (paypalSection) paypalSection.style.display = 'none';
-      if (cardSection) cardSection.style.display = 'none';
-      
-      if (this.value === 'paypal' && paypalSection) {
-        paypalSection.style.display = 'block';
-        const totalPrice = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-        if (totalPrice > 0) {
-          setTimeout(() => renderPaypalButton(totalPrice), 100);
-        }
-      } else if (this.value === 'card' && cardSection) {
-        cardSection.style.display = 'block';
-      }
-    });
-  });
-}
-
-function setupCardPaymentListener() {
+  // Afficher les deux sections
+  if (paypalSection) paypalSection.style.display = 'block';
+  if (cardSection) cardSection.style.display = 'block';
+  
+  // Initialiser PayPal si le panier n'est pas vide
+  const totalPrice = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  if (totalPrice > 0) {
+    setTimeout(() => renderPaypalButton(totalPrice), 300);
+  }
+  
+  // Paiement par carte
   const payWithCardBtn = document.getElementById('payWithCard');
   if (payWithCardBtn) {
     payWithCardBtn.addEventListener('click', processCardPayment);
@@ -623,7 +611,8 @@ function updateCartUI() {
   const cartItems = document.getElementById("cartItems");
   const cartTotal = document.getElementById("cartTotal");
   const addressForm = document.getElementById("addressForm");
-  const paymentOptions = document.querySelector(".payment-options");
+  const paypalSection = document.getElementById("paypal-section");
+  const cardSection = document.getElementById("card-section");
 
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
   const totalPrice = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -641,7 +630,8 @@ function updateCartUI() {
       </div>
     `;
     if (addressForm) addressForm.style.display = 'none';
-    if (paymentOptions) paymentOptions.style.display = 'none';
+    if (paypalSection) paypalSection.style.display = 'none';
+    if (cardSection) cardSection.style.display = 'none';
   } else {
     cartItems.innerHTML = `
       <div class="cart-items-list">
@@ -669,9 +659,11 @@ function updateCartUI() {
     `;
     
     if (addressForm) addressForm.style.display = 'block';
-    if (paymentOptions) paymentOptions.style.display = 'block';
+    if (paypalSection) paypalSection.style.display = 'block';
+    if (cardSection) cardSection.style.display = 'block';
     
-    if (currentPaymentMethod === 'paypal' && totalPrice > 0) {
+    // Recharger PayPal avec le nouveau total
+    if (totalPrice > 0) {
       setTimeout(() => renderPaypalButton(totalPrice), 300);
     }
   }
@@ -734,13 +726,13 @@ function renderPaypalButton(totalPrice) {
   }
 
   try {
-    console.log("💰 PayPal - Montant:", totalPrice.toFixed(2));
+    console.log("💰 PayPal LIVE - Montant:", totalPrice.toFixed(2));
     
     window.paypal.Buttons({
       style: { layout: 'vertical', color: 'gold', shape: 'rect', label: 'paypal' },
       
       createOrder: function(data, actions) {
-        console.log("🔄 Création de la commande PayPal...");
+        console.log("🔄 Création de la commande PayPal LIVE...");
         
         if (!validateAddressForm()) {
           return Promise.reject(new Error("Adresse manquante"));
@@ -758,20 +750,20 @@ function renderPaypalButton(totalPrice) {
           }],
           application_context: { shipping_preference: "NO_SHIPPING", user_action: "PAY_NOW" }
         }).then(order => {
-          console.log("✅ Commande PayPal créée:", order.id);
+          console.log("✅ Commande PayPal LIVE créée:", order.id);
           return order;
         }).catch(error => {
-          console.error("❌ Erreur création commande PayPal:", error);
+          console.error("❌ Erreur création commande PayPal LIVE:", error);
           showMessage("Erreur PayPal: " + (error.message || "Vérifiez vos informations"), 'error');
           throw error;
         });
       },
       
       onApprove: function(data, actions) {
-        console.log("✅ Commande approuvée, capture en cours...");
+        console.log("✅ Commande LIVE approuvée, capture en cours...");
         
         return actions.order.capture().then(async function(details) {
-          console.log("💰 Paiement réussi:", details);
+          console.log("💰 Paiement LIVE réussi:", details);
           
           try {
             await createOrder(details, getShippingAddress());
@@ -784,18 +776,18 @@ function renderPaypalButton(totalPrice) {
             showMessage("Paiement réussi mais erreur d'enregistrement.", 'error');
           }
         }).catch(error => {
-          console.error("❌ Erreur capture paiement:", error);
+          console.error("❌ Erreur capture paiement PayPal LIVE:", error);
           showMessage("Erreur lors du traitement du paiement", 'error');
         });
       },
       
       onCancel: function(data) {
-        console.log("❌ Paiement annulé");
+        console.log("❌ Paiement LIVE annulé");
         showMessage("Paiement annulé", 'info');
       },
       
       onError: function(err) {
-        console.error("❌ Erreur PayPal:", err);
+        console.error("❌ Erreur PayPal LIVE:", err);
         showMessage("Erreur lors du paiement. Réessayez.", 'error');
       },
       
@@ -809,10 +801,10 @@ function renderPaypalButton(totalPrice) {
       }
       
     }).render('#paypal-button-container').catch(error => {
-      console.error("❌ Erreur rendu bouton PayPal:", error);
+      console.error("❌ Erreur rendu bouton PayPal LIVE:", error);
     });
   } catch (e) {
-    console.error("❌ Erreur initialisation PayPal:", e);
+    console.error("❌ Erreur initialisation PayPal LIVE:", e);
   }
 }
 
