@@ -26,6 +26,9 @@ let isAddingToCart = false;
 let searchTerm = '';
 let currentCategory = 'all';
 
+// VOTRE EMAIL PAYPAL
+const PAYPAL_EMAIL = "mialmajulien@gmail.com";
+
 // Options par catégorie
 const SIZE_OPTIONS = {
   clothing: ["XS", "S", "M", "L", "XL", "XXL", "XXXL"],
@@ -42,6 +45,7 @@ const COLORS = ["Blanc", "Noir", "Rouge", "Bleu", "Vert", "Jaune", "Rose", "Viol
 
 document.addEventListener("DOMContentLoaded", () => {
   console.log("🚀 Valy la Negra - Mode LIVE Activé!");
+  console.log("💰 Compte PayPal récepteur:", PAYPAL_EMAIL);
   loadFirestoreProducts();
   loadFirestoreUsers();
   loadCart();
@@ -277,21 +281,17 @@ function setupEventListeners() {
 }
 
 function setupPaymentMethods() {
-  // Les deux méthodes sont directement visibles - Plus besoin de choix
   const paypalSection = document.getElementById('paypal-section');
   const cardSection = document.getElementById('card-section');
   
-  // Afficher les deux sections
   if (paypalSection) paypalSection.style.display = 'block';
   if (cardSection) cardSection.style.display = 'block';
   
-  // Initialiser PayPal si le panier n'est pas vide
   const totalPrice = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   if (totalPrice > 0) {
     setTimeout(() => renderPaypalButton(totalPrice), 300);
   }
   
-  // Paiement par carte
   const payWithCardBtn = document.getElementById('payWithCard');
   if (payWithCardBtn) {
     payWithCardBtn.addEventListener('click', processCardPayment);
@@ -662,7 +662,6 @@ function updateCartUI() {
     if (paypalSection) paypalSection.style.display = 'block';
     if (cardSection) cardSection.style.display = 'block';
     
-    // Recharger PayPal avec le nouveau total
     if (totalPrice > 0) {
       setTimeout(() => renderPaypalButton(totalPrice), 300);
     }
@@ -727,6 +726,7 @@ function renderPaypalButton(totalPrice) {
 
   try {
     console.log("💰 PayPal LIVE - Montant:", totalPrice.toFixed(2));
+    console.log("📧 Envoi vers l'email PayPal:", PAYPAL_EMAIL);
     
     window.paypal.Buttons({
       style: { layout: 'vertical', color: 'gold', shape: 'rect', label: 'paypal' },
@@ -745,12 +745,23 @@ function renderPaypalButton(totalPrice) {
         
         return actions.order.create({
           purchase_units: [{
-            amount: { value: totalPrice.toFixed(2), currency_code: "USD" },
-            description: "Achat Valy la Negra"
+            amount: { 
+              value: totalPrice.toFixed(2), 
+              currency_code: "USD" 
+            },
+            description: "Achat Valy la Negra",
+            payee: {
+              email: PAYPAL_EMAIL
+            }
           }],
-          application_context: { shipping_preference: "NO_SHIPPING", user_action: "PAY_NOW" }
+          application_context: { 
+            shipping_preference: "NO_SHIPPING", 
+            user_action: "PAY_NOW",
+            brand_name: "Valy la Negra"
+          }
         }).then(order => {
           console.log("✅ Commande PayPal LIVE créée:", order.id);
+          console.log("💰 Destinataire:", PAYPAL_EMAIL);
           return order;
         }).catch(error => {
           console.error("❌ Erreur création commande PayPal LIVE:", error);
@@ -764,10 +775,11 @@ function renderPaypalButton(totalPrice) {
         
         return actions.order.capture().then(async function(details) {
           console.log("💰 Paiement LIVE réussi:", details);
+          console.log("📧 Destinataire du paiement:", PAYPAL_EMAIL);
           
           try {
             await createOrder(details, getShippingAddress());
-            showMessage(`🎉 Paiement réussi! Merci ${details.payer.name.given_name}.`, 'success');
+            showMessage(`🎉 Paiement réussi! Merci ${details.payer.name.given_name}. L'argent a été envoyé à votre compte PayPal.`, 'success');
             cart = [];
             saveCart();
             setTimeout(() => closeAllPanels(), 2000);
@@ -879,10 +891,11 @@ async function createOrder(paymentDetails, shippingAddress) {
       totalAmount: cart.reduce((total, item) => total + (item.price * item.quantity), 0),
       paymentId: paymentDetails.id,
       payerId: paymentDetails.payer.payer_id,
-      paymentStatus: 'completed',
+      paymentStatus: paymentDetails.id.includes('card') ? 'local' : 'completed',
       shippingAddress: shippingAddress.full,
       status: 'processing',
       paymentMethod: paymentDetails.id.includes('card') ? 'card' : 'paypal',
+      paypalEmail: PAYPAL_EMAIL,
       createdAt: serverTimestamp(),
       completedAt: serverTimestamp()
     };
@@ -920,6 +933,7 @@ async function sendOrderConfirmationEmail(orderData) {
   console.log("Articles: ", orderData.items.length);
   console.log("Adresse de livraison: ", orderData.shippingAddress);
   console.log("Méthode de paiement: ", orderData.paymentMethod);
+  console.log("Compte PayPal récepteur: ", PAYPAL_EMAIL);
   console.log("=== FIN EMAIL ===");
   return true;
 }
@@ -971,3 +985,4 @@ function showMessage(message, type = 'info') {
 }
 
 console.log("✅ Valy la Negra - Script complet chargé !");
+console.log("💰 Les paiements PayPal seront envoyés à:", PAYPAL_EMAIL);
